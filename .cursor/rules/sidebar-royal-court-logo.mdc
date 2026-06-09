@@ -1,0 +1,33 @@
+---
+description: Pending sidebar Royal Court logo — restore when user asks to bring logo back
+globs: components/app-shell.tsx
+alwaysApply: false
+---
+
+# Sidebar Royal Court Logo (saved for restore)
+
+Logo asset: `public/شعار الديوان الملكي - SVG.svg`
+
+## Current sidebar header in `components/app-shell.tsx`
+
+```tsx
+const ROYAL_COURT_LOGO_SRC = encodeURI("/شعار الديوان الملكي - SVG.svg")
+
+<div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
+  <img
+    src={ROYAL_COURT_LOGO_SRC}
+    alt="المملكة العربية السعودية — الديوان الملكي"
+    className="h-10 w-auto shrink-0"
+  />
+  <div className="leading-tight">
+    <p className="font-heading text-sm font-bold text-sidebar-foreground">{ORG.platform}</p>
+    <p className="text-[11px] text-sidebar-foreground/60">{ORG.parent}</p>
+  </div>
+</div>
+```
+
+## Earlier iterations (if user wants variants)
+
+- **Full-width banner**: logo `className="h-auto w-full"`, platform text centered below with `mt-3 text-center`.
+- **Same line, larger**: logo `h-10 w-auto`, text `text-sm font-bold leading-tight` (may wrap on narrow sidebar).
+- **Original pre-logo**: `CourtMark` icon + `{ORG.platform}` and `{ORG.parent}` in two lines.
