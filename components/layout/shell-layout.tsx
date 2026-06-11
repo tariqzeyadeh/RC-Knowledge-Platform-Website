@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -9,11 +9,13 @@ import {
   ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap,
   LayoutGrid, Bell, Menu, X, Settings, LogOut, ChevronLeft,
 } from "lucide-react"
-import { navGroups } from "@/components/nav-items"
-import { ORG } from "@/lib/data"
-import { cn } from "@/lib/utils"
+import { getNavGroups } from "@/config/navigation"
+import { cn } from "@/utils"
 import { ButtonLink } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useLocale } from "@/hooks/use-locale"
+import { LocaleSwitcher } from "./locale-switcher"
+import { useShellContext } from "./shell-context"
 
 const ROYAL_COURT_LOGO_SRC = encodeURI("/شعار الديوان الملكي - SVG.svg")
 
@@ -24,23 +26,32 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
+  const { dict, locale } = useLocale()
+  const org = dict.org
+  const navGroups = getNavGroups(dict)
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-sidebar-border px-2 py-5">
         <img
           src={ROYAL_COURT_LOGO_SRC}
-          alt="المملكة العربية السعودية — الديوان الملكي"
+          alt={org.logoAlt}
           className="h-10 w-auto shrink-0"
         />
         <div className="leading-tight">
-          <p className="font-heading text-sm font-bold text-sidebar-foreground">{ORG.platform}</p>
-          <p className="text-[11px] text-sidebar-foreground/60">{ORG.parent}</p>
+          <p className="font-heading text-sm font-bold text-sidebar-foreground">{org.platform}</p>
+          <p className="text-[11px] text-sidebar-foreground/60">{org.parent}</p>
         </div>
       </div>
 
       <ScrollArea
-        className="sidebar-scroll min-h-0 flex-1"
-        scrollbarClassName="data-vertical:left-0 data-vertical:right-auto data-vertical:border-s-0 data-vertical:px-0.5"
+        className="sidebar-scroll h-full min-h-0 flex-1"
+        scrollbarClassName={cn(
+          "data-vertical:px-0.5 data-vertical:border-s-0",
+          locale === "ar"
+            ? "data-vertical:left-0 data-vertical:right-auto"
+            : "data-vertical:right-0 data-vertical:left-auto",
+        )}
         thumbClassName="bg-sidebar-foreground/20 hover:bg-sidebar-primary/70"
       >
         <nav className="px-3 py-4">
@@ -81,11 +92,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3 rounded-md px-2 py-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-sidebar-accent-foreground">
-            عخ
+            {dict.shell.userInitials}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">عبدالعزيز العتيبي</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/55">معتمد · المشتريات</p>
+            <p className="truncate text-xs font-medium text-sidebar-foreground">{dict.shell.userName}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/55">{dict.shell.userRole}</p>
           </div>
           <LogOut className="h-4 w-4 text-sidebar-foreground/55" />
         </div>
@@ -94,36 +105,41 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-export function AppShell({
-  children,
-  title,
-  description,
-  breadcrumb,
-}: {
-  children: React.ReactNode
-  title?: string
-  description?: string
-  breadcrumb?: { label: string; href?: string }[]
-}) {
+export function ShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { meta } = useShellContext()
+  const { title, description, breadcrumb } = meta
+  const { dict, dir, t } = useLocale()
+  const org = dict.org
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+  }, [pathname])
+
+  useEffect(() => {
+    document.title = title ? `${title} | ${org.platform}` : org.platform
+  }, [title, org.platform])
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar — desktop (right side for RTL) */}
-      <aside className="fixed inset-y-0 right-0 z-30 hidden w-72 border-s border-sidebar-border bg-sidebar shadow-lg lg:block">
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 border-e border-sidebar-border bg-sidebar shadow-lg lg:block">
         <SidebarContent />
       </aside>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-black/50" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 right-0 w-72 animate-slide-in-right border-s border-sidebar-border bg-sidebar shadow-2xl">
+          <aside
+            className={cn(
+              "absolute inset-y-0 w-72 border-e border-sidebar-border bg-sidebar shadow-2xl",
+              dir === "rtl" ? "start-0 animate-slide-in-right" : "start-0 animate-slide-in-left",
+            )}
+          >
             <button
               onClick={() => setOpen(false)}
-              className="absolute left-3 top-4 rounded-md p-1 text-sidebar-foreground/70 transition-all duration-200 hover:scale-110 hover:bg-sidebar-accent/60"
-              aria-label="إغلاق القائمة"
+              className="absolute end-3 top-4 rounded-md p-1 text-sidebar-foreground/70 transition-all duration-200 hover:scale-110 hover:bg-sidebar-accent/60"
+              aria-label={t("shell.closeMenu")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -132,57 +148,54 @@ export function AppShell({
         </div>
       )}
 
-      <div className="lg:pr-72">
-        {/* Topbar */}
+      <div className="lg:ps-72">
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 shadow-sm backdrop-blur-md">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
             <button
               onClick={() => setOpen(true)}
               className="topbar-btn lg:hidden"
-              aria-label="فتح القائمة"
+              aria-label={t("shell.openMenu")}
             >
               <Menu className="h-5 w-5" />
             </button>
 
             <div className="relative hidden flex-1 md:block">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
-                placeholder="ابحث في المعرفة المؤسسية..."
-                className="h-9 w-full max-w-md rounded-md border border-input bg-card pr-9 pl-3 text-sm outline-none transition-all duration-200 focus:border-ring focus:shadow-sm focus:ring-2 focus:ring-ring/20"
+                placeholder={t("shell.searchPlaceholder")}
+                className="h-9 w-full max-w-md rounded-md border border-input bg-card ps-9 pe-3 text-sm outline-none transition-all duration-200 focus:border-ring focus:shadow-sm focus:ring-2 focus:ring-ring/20"
               />
             </div>
 
             <div className="flex flex-1 items-center justify-end gap-1 md:flex-none">
-              <Link
-                href="/notifications"
-                className="topbar-btn relative"
-                aria-label="الإشعارات"
-              >
+              <LocaleSwitcher />
+              <Link href="/notifications" className="topbar-btn relative" aria-label={t("shell.notifications")}>
                 <Bell className="h-5 w-5" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 animate-pulse-soft rounded-full bg-gold" />
+                <span className="absolute end-1.5 top-1.5 h-2 w-2 animate-pulse-soft rounded-full bg-gold" />
               </Link>
-              <button className="topbar-btn" aria-label="الإعدادات">
+              <button className="topbar-btn" aria-label={t("shell.settings")}>
                 <Settings className="h-5 w-5" />
               </button>
-              <ButtonLink href="/upload" size="sm" className="mr-1 hidden sm:inline-flex">
+              <ButtonLink href="/upload" size="sm" className="ms-1 hidden sm:inline-flex">
                 <FilePlus2 className="h-4 w-4" />
-                مساهمة جديدة
+                {t("shell.newContribution")}
               </ButtonLink>
             </div>
           </div>
         </header>
 
-        {/* Page header */}
         {(title || breadcrumb) && (
           <div className="animate-fade-in-down border-b border-border bg-card/50 px-4 py-6 sm:px-6 lg:px-8">
             {breadcrumb && (
-              <nav className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground" aria-label="مسار التنقل">
+              <nav className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground" aria-label={t("common.breadcrumb")}>
                 {breadcrumb.map((c, i) => (
                   <span key={i} className="flex items-center gap-1.5">
-                    {i > 0 && <ChevronLeft className="h-3 w-3" />}
+                    {i > 0 && <ChevronLeft className={cn("h-3 w-3", dir === "ltr" && "rotate-180")} />}
                     {c.href ? (
-                      <Link href={c.href} className="hover:text-foreground">{c.label}</Link>
+                      <Link href={c.href} className="hover:text-foreground">
+                        {c.label}
+                      </Link>
                     ) : (
                       <span className="text-foreground">{c.label}</span>
                     )}
@@ -191,14 +204,20 @@ export function AppShell({
               </nav>
             )}
             {title && <h1 className="font-heading text-2xl font-bold text-foreground text-balance">{title}</h1>}
-            {description && <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground text-pretty">{description}</p>}
+            {description && (
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground text-pretty">{description}</p>
+            )}
           </div>
         )}
 
-        <main key={pathname} className="animate-fade-in px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main key={pathname} className="animate-fade-in px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
 
         <footer className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground sm:px-6 lg:px-8">
-          <p>{ORG.name} — {ORG.parent} · {ORG.platform} © 2026 · تصنيف: مقيد – داخلي</p>
+          <p>
+            {org.name} — {org.parent} · {org.platform} © 2026 · {t("common.classification")}
+          </p>
         </footer>
       </div>
     </div>

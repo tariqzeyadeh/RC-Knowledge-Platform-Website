@@ -134,6 +134,9 @@
   html {
     @apply font-sans scroll-smooth;
   }
+  html[dir='ltr'] {
+    --font-heading: var(--font-plex-arabic), system-ui, sans-serif;
+  }
   ::selection {
     background: color-mix(in oklch, var(--primary) 25%, transparent);
     color: var(--foreground);
@@ -151,6 +154,10 @@
 
   .animate-slide-in-right {
     animation: slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .animate-scale-in {
@@ -314,6 +321,17 @@
   from {
     opacity: 0;
     transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
   }
   to {
     opacity: 1;

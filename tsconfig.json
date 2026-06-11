@@ -23,9 +23,17 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"],
+      "@/pages/*": ["./PageViews/*"],
+      "@/components/*": ["./components/*"],
+      "@/utils": ["./utils/index.ts"],
+      "@/utils/*": ["./utils/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/services/*": ["./services/*"],
+      "@/repositories/*": ["./repositories/*"],
+      "@/types/*": ["./types/*"],
+      "@/config/*": ["./config/*"],
+      "@/data/*": ["./data/*"]
     }
   },
   "include": [

@@ -1,0 +1,5 @@
+export { knowledgeRepository } from "./knowledge.repository"
+export { seciRepository } from "./seci.repository"
+export { collaborationRepository } from "./collaboration.repository"
+export { governanceRepository } from "./governance.repository"
+export { analyticsRepository } from "./analytics.repository"
