@@ -112,19 +112,19 @@ export function HomePage() {
       </section>
 
       <section className="stagger-children mb-10 grid gap-6 lg:grid-cols-5">
-        <Card className="interactive-card lg:col-span-3">
+        <Card className="interactive-card min-w-0 lg:col-span-3">
           <CardHeader>
             <CardTitle className="font-heading text-base">{t("pages.home.monthlyActivity")}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             <ActivityAreaChart data={monthlyActivity} />
           </CardContent>
         </Card>
-        <Card className="interactive-card lg:col-span-2">
+        <Card className="interactive-card min-w-0 lg:col-span-2">
           <CardHeader>
             <CardTitle className="font-heading text-base">{t("pages.home.contentHealth")}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             <HealthPieChart data={contentHealth} />
           </CardContent>
         </Card>

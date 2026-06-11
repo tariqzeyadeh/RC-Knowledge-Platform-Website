@@ -144,6 +144,11 @@
 }
 
 @layer utilities {
+  .chart-surface svg.recharts-surface {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
   .animate-fade-in {
     animation: fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   }

@@ -6,10 +6,11 @@ import {
 import { AppShell } from "@/components/layout/app-shell"
 import {
   ActivityAreaChart, SearchLineChart, DepartmentBarChart, HealthPieChart,
-  TopContributorsChart, TopCommunitiesChart,
 } from "@/components/charts"
+import { RankProgressList } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -24,6 +25,40 @@ export function AnalyticsPage() {
     kpis, monthlyActivity, departmentContribution, contentHealth,
     topSearches, topContributors, topCommunities,
   } = useLocalizedData()
+
+  const searchRankItems = useMemo(
+    () =>
+      topSearches.map((item) => ({
+        id: item.term,
+        label: item.term,
+        meta: `${formatNumber(item.count)} ${t("pages.analytics.searches")} · ${t("pages.analytics.searchSuccess")} ${item.success}%`,
+        percent: item.success,
+        tone: (item.success >= 85 ? "primary" : "gold") as const,
+      })),
+    [topSearches, formatNumber, t],
+  )
+
+  const contributorRankItems = useMemo(() => {
+    const max = Math.max(...topContributors.map((c) => c.contributions), 1)
+    return topContributors.map((c) => ({
+      id: c.name,
+      label: c.name,
+      meta: `${formatNumber(c.contributions)} ${t("charts.contributionsLabel")} · ${formatNumber(c.assets)} ${t("charts.publishedAssets")}`,
+      percent: (c.contributions / max) * 100,
+      tone: "primary" as const,
+    }))
+  }, [topContributors, formatNumber, t])
+
+  const communityRankItems = useMemo(() => {
+    const max = Math.max(...topCommunities.map((c) => c.posts), 1)
+    return topCommunities.map((c) => ({
+      id: c.name,
+      label: c.name,
+      meta: `${formatNumber(c.posts)} ${t("charts.posts")} · ${formatNumber(c.members)} ${t("charts.members")}`,
+      percent: (c.posts / max) * 100,
+      tone: "primary" as const,
+    }))
+  }, [topCommunities, formatNumber, t])
 
   return (
     <AppShell
@@ -59,21 +94,21 @@ export function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle className="font-heading text-base">{t("pages.analytics.publishActivity")}</CardTitle></CardHeader>
-          <CardContent><ActivityAreaChart data={monthlyActivity} /></CardContent>
+          <CardContent className="min-w-0"><ActivityAreaChart data={monthlyActivity} /></CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle className="font-heading text-base">{t("pages.analytics.monthlySearches")}</CardTitle></CardHeader>
-          <CardContent><SearchLineChart data={monthlyActivity} /></CardContent>
+          <CardContent className="min-w-0"><SearchLineChart data={monthlyActivity} /></CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle className="font-heading text-base">{t("pages.analytics.deptContribution")}</CardTitle></CardHeader>
-          <CardContent><DepartmentBarChart data={departmentContribution} /></CardContent>
+          <CardContent className="min-w-0"><DepartmentBarChart data={departmentContribution} /></CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle className="font-heading text-base">{t("pages.analytics.contentHealth")}</CardTitle></CardHeader>
-          <CardContent><HealthPieChart data={contentHealth} /></CardContent>
+          <CardContent className="min-w-0"><HealthPieChart data={contentHealth} /></CardContent>
         </Card>
       </div>
 
@@ -83,40 +118,23 @@ export function AnalyticsPage() {
             <CardTitle className="font-heading text-base">{t("pages.analytics.topSearches")}</CardTitle>
           </CardHeader>
           <CardContent className="w-full">
-            <div className="space-y-4">
-              {topSearches.map((item) => (
-                <div key={item.term}>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium text-foreground">{item.term}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatNumber(item.count)} {t("pages.analytics.searches")} · {t("pages.analytics.searchSuccess")} {item.success}%
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${item.success >= 85 ? "bg-primary" : "bg-gold"}`}
-                      style={{ width: `${item.success}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RankProgressList items={searchRankItems} />
           </CardContent>
         </Card>
-        <Card className="w-full">
+        <Card className="w-full min-w-0">
           <CardHeader>
             <CardTitle className="font-heading text-base">{t("pages.analytics.topContributors")}</CardTitle>
           </CardHeader>
           <CardContent className="w-full">
-            <TopContributorsChart data={topContributors} />
+            <RankProgressList items={contributorRankItems} />
           </CardContent>
         </Card>
-        <Card className="w-full">
+        <Card className="w-full min-w-0">
           <CardHeader>
             <CardTitle className="font-heading text-base">{t("pages.analytics.topCommunities")}</CardTitle>
           </CardHeader>
           <CardContent className="w-full">
-            <TopCommunitiesChart data={topCommunities} />
+            <RankProgressList items={communityRankItems} />
           </CardContent>
         </Card>
       </div>

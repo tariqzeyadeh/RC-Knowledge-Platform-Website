@@ -1,5 +1,6 @@
 "use client"
 
+import { cloneElement, useLayoutEffect, useRef, useState, type ReactElement } from "react"
 import {
   Area,
   AreaChart,
@@ -12,12 +13,39 @@ import {
   LineChart,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts"
 import { useLocale, useT } from "@/hooks/use-locale"
+
+type SizedChart = ReactElement<{ width?: number; height?: number }>
+
+function ChartFrame({ height, children }: { height: number; children: SizedChart }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const measure = () => {
+      const next = Math.floor(el.getBoundingClientRect().width)
+      if (next > 0) setWidth(next)
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [height])
+
+  return (
+    <div ref={ref} className="chart-surface block w-full min-w-0" style={{ height, width: "100%" }}>
+      {width > 0 && cloneElement(children, { width, height })}
+    </div>
+  )
+}
 
 const axisStyle = { fontSize: 11, fill: "var(--muted-foreground)", fontFamily: "var(--font-sans)" }
 const BAR_SIZE = 16
@@ -111,8 +139,8 @@ export function ActivityAreaChart({
   const tooltipProps = useTooltipProps()
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <AreaChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+    <ChartFrame height={260}>
+      <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="gPublished" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.35} />
@@ -131,7 +159,7 @@ export function ActivityAreaChart({
         <Area type="monotone" dataKey="published" name={t("charts.published")} stroke="var(--chart-1)" strokeWidth={2} fill="url(#gPublished)" />
         <Area type="monotone" dataKey="contributions" name={t("charts.contributions")} stroke="var(--chart-2)" strokeWidth={2} fill="url(#gContrib)" />
       </AreaChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   )
 }
 
@@ -140,8 +168,8 @@ export function SearchLineChart({ data }: { data: { month: string; searches: num
   const tooltipProps = useTooltipProps()
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+    <ChartFrame height={260}>
+      <LineChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
         <XAxis dataKey="month" tick={axisStyle} tickLine={false} axisLine={false} reversed />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} />
@@ -156,7 +184,7 @@ export function SearchLineChart({ data }: { data: { month: string; searches: num
           activeDot={{ r: 5 }}
         />
       </LineChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   )
 }
 
@@ -203,11 +231,11 @@ function HorizontalRankBarChart({
 
   return (
     <div className="w-full min-w-0">
-      <ResponsiveContainer width="100%" height={chartHeight}>
+      <ChartFrame height={chartHeight}>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: topMargin, right: 8, left: 8, bottom: bottomMargin }}
+          margin={{ top: topMargin, right: 0, left: 0, bottom: bottomMargin }}
           barCategoryGap={0}
           barGap={BAR_GAP}
         >
@@ -219,6 +247,8 @@ function HorizontalRankBarChart({
             axisLine={false}
             height={X_AXIS_HEIGHT}
             reversed={dir === "rtl"}
+            padding={{ left: 0, right: 0 }}
+            domain={[0, (max: number) => Math.ceil(max * 1.08)]}
           />
           <YAxis
             type="category"
@@ -251,7 +281,7 @@ function HorizontalRankBarChart({
             />
           ))}
         </BarChart>
-      </ResponsiveContainer>
+      </ChartFrame>
       {showLegend && <ChartLegend payload={legendPayload} />}
     </div>
   )
@@ -269,50 +299,13 @@ export function DepartmentBarChart({ data }: { data: { name: string; value: numb
   )
 }
 
-export function TopContributorsChart({
-  data,
-}: {
-  data: { name: string; contributions: number; assets: number }[]
-}) {
-  const t = useT()
-
-  return (
-    <HorizontalRankBarChart
-      data={data}
-      series={[
-        { dataKey: "contributions", name: t("charts.contributionsLabel"), fill: "var(--chart-1)" },
-        { dataKey: "assets", name: t("charts.publishedAssets"), fill: "var(--chart-2)" },
-      ]}
-    />
-  )
-}
-
-export function TopCommunitiesChart({
-  data,
-}: {
-  data: { name: string; members: number; posts: number; assets: number }[]
-}) {
-  const t = useT()
-
-  return (
-    <HorizontalRankBarChart
-      data={data}
-      series={[
-        { dataKey: "posts", name: t("charts.posts"), fill: "var(--chart-1)" },
-        { dataKey: "members", name: t("charts.members"), fill: "var(--chart-4)" },
-        { dataKey: "assets", name: t("charts.producedAssets"), fill: "var(--chart-2)" },
-      ]}
-    />
-  )
-}
-
 export function HealthPieChart({ data }: { data: { name: string; value: number; color: string }[] }) {
   const tooltipProps = useTooltipProps()
   const legendPayload = data.map((d) => ({ value: d.name, color: d.color }))
 
   return (
     <div className="w-full min-w-0">
-      <ResponsiveContainer width="100%" height={240}>
+      <ChartFrame height={240}>
         <PieChart>
           <Pie
             data={data}
@@ -332,7 +325,7 @@ export function HealthPieChart({ data }: { data: { name: string; value: number; 
           </Pie>
           <Tooltip {...tooltipProps} />
         </PieChart>
-      </ResponsiveContainer>
+      </ChartFrame>
       <ChartLegend payload={legendPayload} />
     </div>
   )
