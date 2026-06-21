@@ -4,16 +4,19 @@ import Link from "next/link"
 import {
   Library, Search, Users, ClipboardCheck, ChevronLeft, TrendingUp, TrendingDown,
   FolderKanban, FileSignature, ScrollText, Lightbulb, MonitorSmartphone, Scale, Target,
-  Sparkles, ArrowUpRight, FilePlus2,
+  Sparkles, ArrowUpRight, FilePlus2, Clock,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { AssetCard, SectionHeading } from "@/components/shared"
 import { ActivityAreaChart, HealthPieChart } from "@/components/charts"
+import { useAuth } from "@/hooks/use-auth"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ButtonLink } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/utils"
+import type { UserRole } from "@/types/auth"
 
 const kpiIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   Library, Search, Users, ClipboardCheck,
@@ -22,11 +25,21 @@ const catIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   FolderKanban, FileSignature, ScrollText, Lightbulb, Users, MonitorSmartphone, Scale, Target,
 }
 
+const KPI_BY_ROLE: Record<UserRole, string[]> = {
+  seeker: ["Search", "Library"],
+  contributor: ["Library", "ClipboardCheck", "Users"],
+  reviewer: ["ClipboardCheck", "Library", "Search"],
+  admin: ["Library", "Search", "Users", "ClipboardCheck"],
+}
+
 export function HomePage() {
   const t = useT()
+  const { user } = useAuth()
+  const role = user?.role ?? "seeker"
   const { dict, dir, formatNumber } = useLocale()
-  const { kpis, seciLayers, assets, categories, monthlyActivity, contentHealth } = useLocalizedData()
+  const { kpis, seciLayers, assets, categories, monthlyActivity, contentHealth, topSearches, reviewQueue } = useLocalizedData()
   const org = dict.org
+  const visibleKpis = kpis.filter((k) => KPI_BY_ROLE[role].includes(k.icon))
 
   return (
     <AppShell>
@@ -46,21 +59,145 @@ export function HomePage() {
               {t("pages.home.heroDesc")}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <ButtonLink href="/library" variant="secondary" size="lg">
-                <Library className="h-4 w-4" />
-                {t("pages.home.browseLibrary")}
-              </ButtonLink>
-              <ButtonLink href="/upload" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
-                <FilePlus2 className="h-4 w-4" />
-                {t("pages.home.addContribution")}
-              </ButtonLink>
+              {role === "seeker" && (
+                <>
+                  <ButtonLink href="/search" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+                    <Search className="h-4 w-4" />
+                    {t("pages.home.startSearch")}
+                  </ButtonLink>
+                  <ButtonLink href="/library" variant="secondary" size="lg">
+                    <Library className="h-4 w-4" />
+                    {t("pages.home.browseLibrary")}
+                  </ButtonLink>
+                </>
+              )}
+              {role === "contributor" && (
+                <>
+                  <ButtonLink href="/upload" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+                    <FilePlus2 className="h-4 w-4" />
+                    {t("pages.home.addContribution")}
+                  </ButtonLink>
+                  <ButtonLink href="/library" variant="secondary" size="lg">
+                    <Library className="h-4 w-4" />
+                    {t("pages.home.browseLibrary")}
+                  </ButtonLink>
+                </>
+              )}
+              {role === "reviewer" && (
+                <>
+                  <ButtonLink href="/review" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+                    <ClipboardCheck className="h-4 w-4" />
+                    {t("pages.home.openReviewQueue")}
+                  </ButtonLink>
+                  <ButtonLink href="/library" variant="secondary" size="lg">
+                    <Library className="h-4 w-4" />
+                    {t("pages.home.browseLibrary")}
+                  </ButtonLink>
+                </>
+              )}
+              {role === "admin" && (
+                <>
+                  <ButtonLink href="/library" variant="secondary" size="lg">
+                    <Library className="h-4 w-4" />
+                    {t("pages.home.browseLibrary")}
+                  </ButtonLink>
+                  <ButtonLink href="/upload" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+                    <FilePlus2 className="h-4 w-4" />
+                    {t("pages.home.addContribution")}
+                  </ButtonLink>
+                </>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="stagger-children mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {kpis.map((k) => {
+      {role === "seeker" && (
+        <section className="mb-10">
+          <SectionHeading title={t("pages.home.topSearchesTitle")} />
+          <Card>
+            <CardContent className="p-4">
+              <ul className="space-y-3">
+                {topSearches.slice(0, 5).map((item) => (
+                  <li key={item.term}>
+                    <Link href={`/search?q=${encodeURIComponent(item.term)}`} className="block">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground hover:text-primary">{item.term}</span>
+                        <span className="text-muted-foreground">{item.count}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${item.success}%` }} />
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {role === "contributor" && (
+        <section className="mb-10">
+          <SectionHeading title={t("pages.home.myContributionsTitle")} />
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <p className="text-xs text-muted-foreground">{t("pages.home.myContributionsDesc")}</p>
+              {[
+                { label: t("pages.home.contributionDraft"), status: "draft" as const },
+                { label: t("pages.home.contributionReview"), status: "review" as const },
+                { label: t("pages.home.contributionPublished"), status: "published" as const },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
+                  <span className="text-sm text-foreground">{item.label}</span>
+                  <Badge variant="secondary">{t(`presentation.status.${item.status}`)}</Badge>
+                </div>
+              ))}
+              <ButtonLink href="/upload" variant="outline" size="sm" className="mt-2">
+                <FilePlus2 className="h-4 w-4" />
+                {t("pages.home.addContribution")}
+              </ButtonLink>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {role === "reviewer" && (
+        <section className="mb-10">
+          <SectionHeading
+            title={t("pages.home.pendingReviewTitle")}
+            action={
+              <Link href="/review" className="link-arrow hover:underline">
+                {t("pages.home.viewQueue")}{" "}
+                <ChevronLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} />
+              </Link>
+            }
+          />
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <p className="text-xs text-muted-foreground">{t("pages.home.pendingReviewDesc")}</p>
+              {reviewQueue.slice(0, 3).map((item) => (
+                <div key={item.id} className="rounded-lg border border-border bg-card px-3 py-2.5">
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  <p className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                    <span>{item.submittedBy}</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {item.sla}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      <section className={cn(
+        "stagger-children mb-10 grid gap-4",
+        visibleKpis.length >= 4 ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2 lg:grid-cols-3",
+      )}>
+        {visibleKpis.map((k) => {
           const Icon = kpiIcons[k.icon] ?? Library
           return (
             <Card key={k.icon} className="interactive-card group">
@@ -111,24 +248,26 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="stagger-children mb-10 grid gap-6 lg:grid-cols-5">
-        <Card className="interactive-card min-w-0 lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="font-heading text-base">{t("pages.home.monthlyActivity")}</CardTitle>
-          </CardHeader>
-          <CardContent className="min-w-0">
-            <ActivityAreaChart data={monthlyActivity} />
-          </CardContent>
-        </Card>
-        <Card className="interactive-card min-w-0 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="font-heading text-base">{t("pages.home.contentHealth")}</CardTitle>
-          </CardHeader>
-          <CardContent className="min-w-0">
-            <HealthPieChart data={contentHealth} />
-          </CardContent>
-        </Card>
-      </section>
+      {role === "admin" && (
+        <section className="stagger-children mb-10 grid gap-6 lg:grid-cols-5">
+          <Card className="interactive-card min-w-0 lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="font-heading text-base">{t("pages.home.monthlyActivity")}</CardTitle>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <ActivityAreaChart data={monthlyActivity} />
+            </CardContent>
+          </Card>
+          <Card className="interactive-card min-w-0 lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="font-heading text-base">{t("pages.home.contentHealth")}</CardTitle>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <HealthPieChart data={contentHealth} />
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="mb-10">
         <SectionHeading

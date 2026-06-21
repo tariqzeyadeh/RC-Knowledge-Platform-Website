@@ -3,32 +3,52 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, Search, Library, FilePlus2, Users, Repeat, ListChecks,
   ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap,
   LayoutGrid, Bell, Menu, X, Settings, LogOut, ChevronLeft,
 } from "lucide-react"
-import { getNavGroups } from "@/config/navigation"
+import { getNavGroups, type NavGroup } from "@/config/navigation"
 import { cn } from "@/utils"
 import { ButtonLink } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useAuth } from "@/hooks/use-auth"
 import { useLocale } from "@/hooks/use-locale"
+import { filterNavGroups, canUpload } from "@/lib/auth"
+import type { SessionUser } from "@/types/auth"
 import { LocaleSwitcher } from "./locale-switcher"
 import { useShellContext } from "./shell-context"
 
 const ROYAL_COURT_LOGO_SRC = encodeURI("/شعار الديوان الملكي - SVG.svg")
+
+const BARE_PATHS = ["/login", "/forbidden"]
+
+function userInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`
+  return name.slice(0, 2)
+}
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, Search, Library, FilePlus2, Users, Repeat, ListChecks,
   ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap, LayoutGrid,
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  navGroups,
+  user,
+  onNavigate,
+  onLogout,
+}: {
+  navGroups: NavGroup[]
+  user: SessionUser
+  onNavigate?: () => void
+  onLogout: () => void
+}) {
   const pathname = usePathname()
-  const { dict, locale } = useLocale()
+  const { dict, locale, t } = useLocale()
   const org = dict.org
-  const navGroups = getNavGroups(dict)
 
   return (
     <div className="flex h-full flex-col">
@@ -90,16 +110,20 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </ScrollArea>
 
       <div className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-3 rounded-md px-2 py-2">
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-start transition-colors hover:bg-sidebar-accent/60"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-sidebar-accent-foreground">
-            {dict.shell.userInitials}
+            {userInitials(user.displayName)}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">{dict.shell.userName}</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/55">{dict.shell.userRole}</p>
+            <p className="truncate text-xs font-medium text-sidebar-foreground">{user.displayName}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/55">{t(`auth.roles.${user.role}`)}</p>
           </div>
-          <LogOut className="h-4 w-4 text-sidebar-foreground/55" />
-        </div>
+          <LogOut className="h-4 w-4 shrink-0 text-sidebar-foreground/55" />
+        </button>
       </div>
     </div>
   )
@@ -107,11 +131,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function ShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { meta } = useShellContext()
   const { title, description, breadcrumb } = meta
   const { dict, dir, t } = useLocale()
+  const { user, loading, logout } = useAuth()
   const org = dict.org
   const [open, setOpen] = useState(false)
+
+  const isBarePage = BARE_PATHS.includes(pathname)
+  const navGroups = user ? filterNavGroups(getNavGroups(dict), user.role) : []
+  const showUpload = user ? canUpload(user.role) : false
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
@@ -121,10 +151,32 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
     document.title = title ? `${title} | ${org.platform}` : org.platform
   }, [title, org.platform])
 
+  useEffect(() => {
+    if (!isBarePage && !loading && !user) {
+      router.replace("/login")
+    }
+  }, [isBarePage, loading, user, router])
+
+  if (isBarePage) {
+    return <>{children}</>
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        {t("common.loading")}
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen min-w-0 overflow-x-clip bg-background">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 border-e border-sidebar-border bg-sidebar shadow-lg lg:block">
-        <SidebarContent />
+        <SidebarContent navGroups={navGroups} user={user} onLogout={() => void logout()} />
       </aside>
 
       {open && (
@@ -143,14 +195,19 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent
+              navGroups={navGroups}
+              user={user}
+              onNavigate={() => setOpen(false)}
+              onLogout={() => void logout()}
+            />
           </aside>
         </div>
       )}
 
-      <div className="lg:ps-72">
+      <div className="min-w-0 max-w-full overflow-x-clip lg:ps-72">
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 shadow-sm backdrop-blur-md">
-          <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3 px-4 py-3 sm:px-6">
             <button
               onClick={() => setOpen(true)}
               className="topbar-btn lg:hidden"
@@ -159,7 +216,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="relative hidden flex-1 md:block">
+            <div className="relative hidden min-w-0 flex-1 md:block">
               <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
@@ -177,10 +234,12 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
               <button className="topbar-btn" aria-label={t("shell.settings")}>
                 <Settings className="h-5 w-5" />
               </button>
-              <ButtonLink href="/upload" size="sm" className="ms-1 hidden sm:inline-flex">
-                <FilePlus2 className="h-4 w-4" />
-                {t("shell.newContribution")}
-              </ButtonLink>
+              {showUpload && (
+                <ButtonLink href="/upload" size="sm" className="ms-1 hidden sm:inline-flex">
+                  <FilePlus2 className="h-4 w-4" />
+                  {t("shell.newContribution")}
+                </ButtonLink>
+              )}
             </div>
           </div>
         </header>
@@ -210,7 +269,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main key={pathname} className="animate-fade-in px-4 py-6 sm:px-6 lg:px-8">
+        <main key={pathname} className="animate-fade-in min-w-0 max-w-full overflow-x-clip px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>
 

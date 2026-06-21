@@ -200,3 +200,10 @@ export type AssetFilters = {
   type?: string
   confidentiality?: string
 }
+
+export type SearchFilters = AssetFilters & {
+  department?: string
+  fileType?: string
+  dateFrom?: string
+  dateTo?: string
+}

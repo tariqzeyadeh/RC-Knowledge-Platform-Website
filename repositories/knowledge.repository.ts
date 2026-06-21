@@ -27,4 +27,18 @@ export const knowledgeRepository = {
   listConfidentialityLevels(locale: Locale = "ar") {
     return localizedData.knowledge(locale).confidentialityLevels
   },
+
+  listDepartments(locale: Locale = "ar") {
+    const departments = new Set(
+      localizedData.knowledge(locale).assets.map((asset) => asset.department),
+    )
+    return [...departments].sort((a, b) => a.localeCompare(b, locale === "ar" ? "ar" : "en"))
+  },
+
+  listFileTypes(locale: Locale = "ar") {
+    const types = new Set(
+      localizedData.knowledge(locale).assets.map((asset) => asset.fileType),
+    )
+    return [...types].sort()
+  },
 }
