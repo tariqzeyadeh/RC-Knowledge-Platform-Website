@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import type { SessionUser } from "@/types/auth"
 
 type AuthContextValue = {
@@ -23,7 +23,6 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter()
   const pathname = usePathname()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,11 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [pathname, refresh])
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" })
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
     setUser(null)
-    router.push("/login")
-    router.refresh()
-  }, [router])
+    window.location.assign("/login")
+  }, [])
 
   const value = useMemo(
     () => ({ user, loading, setSession, logout, refresh }),

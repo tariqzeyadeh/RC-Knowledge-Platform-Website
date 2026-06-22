@@ -1,13 +1,16 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { useLocale } from "@/hooks/use-locale"
 import { searchAssets } from "@/services/knowledge/asset-search.service"
 import type { AssetSort } from "@/types/domain"
 
 export function useAssetSearch(initialSort: AssetSort = "relevance") {
   const { locale } = useLocale()
-  const [query, setQuery] = useState("")
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get("q") ?? ""
+  const [query, setQuery] = useState(urlQuery)
   const [sort, setSort] = useState<AssetSort>(initialSort)
   const [categoryId, setCategoryId] = useState("all")
   const [type, setType] = useState("all")
@@ -15,6 +18,10 @@ export function useAssetSearch(initialSort: AssetSort = "relevance") {
   const [fileType, setFileType] = useState("all")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+
+  useEffect(() => {
+    setQuery(urlQuery)
+  }, [urlQuery])
 
   const results = useMemo(
     () =>

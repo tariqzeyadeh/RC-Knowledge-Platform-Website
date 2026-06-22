@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useT } from "@/hooks/use-locale"
-import { getRoleLanding } from "@/lib/auth"
+import { getRoleLanding } from "@/lib/auth-access"
 import { ButtonLink } from "@/components/ui/button"
 
 export function ForbiddenPage() {

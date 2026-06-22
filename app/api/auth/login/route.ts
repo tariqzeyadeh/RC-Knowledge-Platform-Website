@@ -26,6 +26,13 @@ export async function POST(request: Request) {
     },
   })
 
+  response.cookies.set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  })
+
   response.cookies.set(SESSION_COOKIE, session, {
     httpOnly: true,
     sameSite: "lax",

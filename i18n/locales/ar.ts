@@ -192,6 +192,8 @@ export const ar = {
   },
   shell: {
     searchPlaceholder: "ابحث في المعرفة المؤسسية...",
+    suggestions: "اقتراحات",
+    popularSearches: "عمليات بحث شائعة",
     newContribution: "مساهمة جديدة",
     openMenu: "فتح القائمة",
     closeMenu: "إغلاق القائمة",

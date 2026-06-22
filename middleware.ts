@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { ROLE_LANDING, SESSION_COOKIE } from "@/config/auth"
+import { SESSION_COOKIE } from "@/config/auth"
 import { canAccessPath, decodeSession } from "@/lib/auth"
 
-const PUBLIC_PATHS = ["/login"]
+const PUBLIC_PATHS = ["/login", "/forbidden"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -19,10 +19,8 @@ export function middleware(request: NextRequest) {
   const sessionRaw = request.cookies.get(SESSION_COOKIE)?.value
   const user = sessionRaw ? decodeSession(sessionRaw) : null
 
+  // Always allow login and forbidden pages — login must stay reachable to switch accounts
   if (PUBLIC_PATHS.includes(pathname)) {
-    if (user) {
-      return NextResponse.redirect(new URL(ROLE_LANDING[user.role], request.url))
-    }
     return NextResponse.next()
   }
 
@@ -30,10 +28,6 @@ export function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("next", pathname)
     return NextResponse.redirect(loginUrl)
-  }
-
-  if (pathname === "/forbidden") {
-    return NextResponse.next()
   }
 
   if (user.role === "superAdmin" && pathname === "/") {

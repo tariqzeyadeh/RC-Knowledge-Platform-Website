@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -18,6 +18,7 @@ import { useLocale } from "@/hooks/use-locale"
 import { filterNavGroups, canUpload, isSuperAdmin } from "@/lib/auth"
 import type { SessionUser } from "@/types/auth"
 import { LocaleSwitcher } from "./locale-switcher"
+import { AppBarSearch } from "./app-bar-search"
 import { useShellContext } from "./shell-context"
 
 const ROYAL_COURT_LOGO_SRC = encodeURI("/شعار الديوان الملكي - SVG.svg")
@@ -224,14 +225,9 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
 
             <div className="relative hidden min-w-0 flex-1 md:block">
               {!isPortalUser && (
-                <>
-                  <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="search"
-                    placeholder={t("shell.searchPlaceholder")}
-                    className="h-9 w-full max-w-md rounded-md border border-input bg-card ps-9 pe-3 text-sm outline-none transition-all duration-200 focus:border-ring focus:shadow-sm focus:ring-2 focus:ring-ring/20"
-                  />
-                </>
+                <Suspense fallback={null}>
+                  <AppBarSearch />
+                </Suspense>
               )}
             </div>
 

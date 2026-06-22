@@ -194,6 +194,8 @@ export const en: Dictionary = {
   },
   shell: {
     searchPlaceholder: "Search institutional knowledge...",
+    suggestions: "Suggestions",
+    popularSearches: "Popular searches",
     newContribution: "New contribution",
     openMenu: "Open menu",
     closeMenu: "Close menu",

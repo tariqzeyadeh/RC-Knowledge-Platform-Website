@@ -1,3 +1,4 @@
+import { localizedData } from "@/data/localized"
 import { knowledgeRepository } from "@/repositories/knowledge.repository"
 import type { Locale } from "@/i18n"
 import type { AssetSort, KnowledgeAsset, SearchFilters } from "@/types/domain"
@@ -64,4 +65,48 @@ export function listSearchDepartments(locale: Locale = "ar") {
 
 export function listSearchFileTypes(_locale: Locale = "ar") {
   return [...SEARCH_FILE_FORMATS]
+}
+
+function suggestionScore(term: string, normalized: string, popularity: number) {
+  const lower = term.toLowerCase()
+  let score = popularity
+  if (lower === normalized) score += 100
+  else if (lower.startsWith(normalized)) score += 50
+  else if (lower.includes(normalized)) score += 20
+  return score
+}
+
+/** Autocomplete pool: popular terms, curated suggestions, and asset titles */
+export function getSearchSuggestions(query: string, locale: Locale = "ar", limit = 8): string[] {
+  const analytics = localizedData.analytics(locale)
+  const assets = knowledgeRepository.listAssets(locale)
+  const normalized = query.trim().toLowerCase()
+
+  const popularity = new Map<string, number>()
+  for (const { term, count } of analytics.topSearches) {
+    popularity.set(term, count)
+  }
+  for (const term of analytics.searchSuggestions) {
+    if (!popularity.has(term)) popularity.set(term, 0)
+  }
+  for (const asset of assets) {
+    const existing = popularity.get(asset.title) ?? 0
+    popularity.set(asset.title, existing + asset.views / 10)
+  }
+
+  const terms = [...popularity.keys()]
+
+  if (!normalized) {
+    return analytics.topSearches.slice(0, limit).map(({ term }) => term)
+  }
+
+  return terms
+    .filter((term) => term.toLowerCase().includes(normalized))
+    .map((term) => ({
+      term,
+      score: suggestionScore(term, normalized, popularity.get(term) ?? 0),
+    }))
+    .sort((a, b) => b.score - a.score || a.term.localeCompare(b.term, locale))
+    .slice(0, limit)
+    .map(({ term }) => term)
 }

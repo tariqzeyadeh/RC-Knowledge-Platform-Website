@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Lock, LogIn } from "lucide-react"
-import { getPostLoginDestination } from "@/lib/auth"
+import { getPostLoginDestination } from "@/lib/auth-access"
 import { useAuth } from "@/hooks/use-auth"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,6 @@ const ROYAL_COURT_LOGO_SRC = encodeURI("/شعار الديوان الملكي - 
 export function LoginPage() {
   const t = useT()
   const { dict } = useLocale()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const { setSession } = useAuth()
   const [username, setUsername] = useState("")
@@ -34,6 +33,7 @@ export function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ username, password }),
       })
 
@@ -47,8 +47,8 @@ export function LoginPage() {
 
       const destination = getPostLoginDestination(data.user.role, searchParams.get("next"))
 
-      router.push(destination)
-      router.refresh()
+      // Full page navigation ensures the new session cookie is applied before middleware runs
+      window.location.assign(destination)
     } catch {
       setError(t("auth.loginError"))
     } finally {
