@@ -36,6 +36,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (user.role === "superAdmin" && pathname === "/") {
+    return NextResponse.redirect(new URL("/analytics", request.url))
+  }
+
   if (!canAccessPath(user.role, pathname)) {
     return NextResponse.redirect(new URL("/forbidden", request.url))
   }

@@ -28,6 +28,12 @@ export const DEMO_USERS: DemoUser[] = [
     role: "admin",
     displayName: "فهد القحطاني",
   },
+  {
+    username: "superadmin",
+    password: "superadmin123",
+    role: "superAdmin",
+    displayName: "ماجد الحربي",
+  },
 ]
 
 export const ROLE_LANDING: Record<UserRole, string> = {
@@ -35,6 +41,7 @@ export const ROLE_LANDING: Record<UserRole, string> = {
   contributor: "/",
   reviewer: "/",
   admin: "/",
+  superAdmin: "/analytics",
 }
 
 export function findDemoUser(username: string, password: string) {

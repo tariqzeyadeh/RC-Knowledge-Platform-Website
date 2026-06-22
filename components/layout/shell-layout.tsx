@@ -7,15 +7,15 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, Search, Library, FilePlus2, Users, Repeat, ListChecks,
   ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap,
-  LayoutGrid, Bell, Menu, X, Settings, LogOut, ChevronLeft,
+  LayoutGrid, Bell, Menu, X, Settings, LogOut, ChevronLeft, UserCog, GitBranch, Megaphone,
 } from "lucide-react"
-import { getNavGroups, type NavGroup } from "@/config/navigation"
+import { getNavGroups, getSuperAdminNavGroups, type NavGroup } from "@/config/navigation"
 import { cn } from "@/utils"
 import { ButtonLink } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/hooks/use-auth"
 import { useLocale } from "@/hooks/use-locale"
-import { filterNavGroups, canUpload } from "@/lib/auth"
+import { filterNavGroups, canUpload, isSuperAdmin } from "@/lib/auth"
 import type { SessionUser } from "@/types/auth"
 import { LocaleSwitcher } from "./locale-switcher"
 import { useShellContext } from "./shell-context"
@@ -32,7 +32,7 @@ function userInitials(name: string) {
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, Search, Library, FilePlus2, Users, Repeat, ListChecks,
-  ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap, LayoutGrid,
+  ClipboardCheck, BarChart3, ShieldCheck, ScrollText, Scale, GraduationCap, LayoutGrid, UserCog, GitBranch, Megaphone,
 }
 
 function SidebarContent({
@@ -140,7 +140,13 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
 
   const isBarePage = BARE_PATHS.includes(pathname)
-  const navGroups = user ? filterNavGroups(getNavGroups(dict), user.role) : []
+  const isPortalUser = user ? isSuperAdmin(user.role) : false
+  const navGroups = user
+    ? filterNavGroups(
+        isPortalUser ? getSuperAdminNavGroups(dict) : getNavGroups(dict),
+        user.role,
+      )
+    : []
   const showUpload = user ? canUpload(user.role) : false
 
   useEffect(() => {
@@ -217,20 +223,26 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             <div className="relative hidden min-w-0 flex-1 md:block">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder={t("shell.searchPlaceholder")}
-                className="h-9 w-full max-w-md rounded-md border border-input bg-card ps-9 pe-3 text-sm outline-none transition-all duration-200 focus:border-ring focus:shadow-sm focus:ring-2 focus:ring-ring/20"
-              />
+              {!isPortalUser && (
+                <>
+                  <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="search"
+                    placeholder={t("shell.searchPlaceholder")}
+                    className="h-9 w-full max-w-md rounded-md border border-input bg-card ps-9 pe-3 text-sm outline-none transition-all duration-200 focus:border-ring focus:shadow-sm focus:ring-2 focus:ring-ring/20"
+                  />
+                </>
+              )}
             </div>
 
             <div className="flex flex-1 items-center justify-end gap-1 md:flex-none">
               <LocaleSwitcher />
-              <Link href="/notifications" className="topbar-btn relative" aria-label={t("shell.notifications")}>
-                <Bell className="h-5 w-5" />
-                <span className="absolute end-1.5 top-1.5 h-2 w-2 animate-pulse-soft rounded-full bg-gold" />
-              </Link>
+              {!isPortalUser && (
+                <Link href="/notifications" className="topbar-btn relative" aria-label={t("shell.notifications")}>
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute end-1.5 top-1.5 h-2 w-2 animate-pulse-soft rounded-full bg-gold" />
+                </Link>
+              )}
               <button className="topbar-btn" aria-label={t("shell.settings")}>
                 <Settings className="h-5 w-5" />
               </button>

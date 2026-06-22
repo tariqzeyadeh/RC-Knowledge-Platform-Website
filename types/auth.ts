@@ -1,4 +1,4 @@
-export type UserRole = "seeker" | "contributor" | "reviewer" | "admin"
+export type UserRole = "seeker" | "contributor" | "reviewer" | "admin" | "superAdmin"
 
 export type SessionUser = {
   username: string

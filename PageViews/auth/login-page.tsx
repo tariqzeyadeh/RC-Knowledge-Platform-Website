@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Lock, LogIn } from "lucide-react"
-import { ROLE_LANDING } from "@/config/auth"
+import { getPostLoginDestination } from "@/lib/auth"
 import { useAuth } from "@/hooks/use-auth"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { Button } from "@/components/ui/button"
@@ -45,9 +45,7 @@ export function LoginPage() {
       const data = (await res.json()) as { user: SessionUser }
       setSession(data.user)
 
-      const next = searchParams.get("next")
-      const destination =
-        next && next !== "/login" ? next : ROLE_LANDING[data.user.role]
+      const destination = getPostLoginDestination(data.user.role, searchParams.get("next"))
 
       router.push(destination)
       router.refresh()

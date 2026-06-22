@@ -97,13 +97,17 @@ export function HomePage() {
               )}
               {role === "admin" && (
                 <>
-                  <ButtonLink href="/library" variant="secondary" size="lg">
-                    <Library className="h-4 w-4" />
-                    {t("pages.home.browseLibrary")}
-                  </ButtonLink>
                   <ButtonLink href="/upload" size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
                     <FilePlus2 className="h-4 w-4" />
                     {t("pages.home.addContribution")}
+                  </ButtonLink>
+                  <ButtonLink href="/review" variant="secondary" size="lg">
+                    <ClipboardCheck className="h-4 w-4" />
+                    {t("pages.home.openReviewQueue")}
+                  </ButtonLink>
+                  <ButtonLink href="/library" variant="secondary" size="lg">
+                    <Library className="h-4 w-4" />
+                    {t("pages.home.browseLibrary")}
                   </ButtonLink>
                 </>
               )}
