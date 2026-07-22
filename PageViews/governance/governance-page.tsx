@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { complianceStatusKey } from "@/i18n/enum-maps"
+import { DemoDataGate } from "@/components/shared"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/utils"
 
@@ -12,12 +13,14 @@ export function GovernancePage() {
   const t = useT()
   const { complianceMatrix, securityControls } = useLocalizedData()
 
+  /* STATIC_DEMO_DATA: hardcoded sovereignty metrics from i18n
   const metrics = [
     { k: t("pages.governance.metrics.rto"), v: t("pages.governance.metrics.rtoValue") },
     { k: t("pages.governance.metrics.rpo"), v: t("pages.governance.metrics.rpoValue") },
     { k: t("pages.governance.metrics.encryption"), v: t("pages.governance.metrics.encryptionValue") },
     { k: t("pages.governance.metrics.siem"), v: t("pages.governance.metrics.siemValue") },
   ]
+  */
 
   return (
     <AppShell
@@ -25,6 +28,7 @@ export function GovernancePage() {
       description={t("pages.governance.description")}
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.governance.title") }]}
     >
+      <DemoDataGate>
       <h2 className="mb-4 flex items-center gap-2 font-heading text-base font-bold text-foreground">
         <Scale className="h-5 w-5 text-primary" /> {t("pages.governance.complianceMatrix")}
       </h2>
@@ -84,6 +88,7 @@ export function GovernancePage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-relaxed text-primary-foreground/85">
             <p>{t("pages.governance.hostingDesc")}</p>
+            {/* STATIC_DEMO_DATA: sovereignty metric tiles
             <div className="grid grid-cols-2 gap-3">
               {metrics.map((x) => (
                 <div key={x.k} className="rounded-lg bg-white/10 p-3">
@@ -92,9 +97,11 @@ export function GovernancePage() {
                 </div>
               ))}
             </div>
+            */}
           </CardContent>
         </Card>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

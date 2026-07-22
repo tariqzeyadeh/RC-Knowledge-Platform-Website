@@ -273,6 +273,7 @@ async function mapReviewItem(row: typeof reviewItems.$inferSelect, locale: Local
     stage: (await getLookupLabel("review_stage", row.stageId, locale)) as ReviewItem["stage"],
     sla: row.sla,
     priority: (await getLookupLabel("review_priority", row.priorityId, locale)) as ReviewItem["priority"],
+    assetId: row.assetId ?? undefined,
   }
 }
 
@@ -361,6 +362,17 @@ export async function createNeed(
     expectedOutcomeEn: data.expectedOutcomeEn,
   })
   return getNeed(data.id, locale)
+}
+
+export async function voteNeed(id: string, locale: Locale = "ar") {
+  const db = getDb()
+  const row = await db.select().from(knowledgeNeeds).where(eq(knowledgeNeeds.id, id)).get()
+  if (!row) return null
+  await db
+    .update(knowledgeNeeds)
+    .set({ votes: row.votes + 1 })
+    .where(eq(knowledgeNeeds.id, id))
+  return getNeed(id, locale)
 }
 
 export async function listNotifications(locale: Locale = "ar") {

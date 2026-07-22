@@ -1,1 +1,1 @@
-export { TransferDetailPage as default, generateStaticParams } from "@/pages/transfer/transfer-detail-page"
+export { TransferDetailPage as default } from "@/pages/transfer/transfer-detail-page"

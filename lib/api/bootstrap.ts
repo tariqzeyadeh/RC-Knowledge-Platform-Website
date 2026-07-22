@@ -28,8 +28,10 @@ import {
 import {
   listCategories,
   listConfidentialityLevels,
+  listContentTemplates,
   listKnowledgeTypeLabels,
   listLookups,
+  listTransferSessionTypeOptions,
 } from "@/lib/db/repositories/lookup.repository"
 
 export async function getPlatformBootstrap(locale: Locale) {
@@ -63,6 +65,12 @@ export async function getPlatformBootstrap(locale: Locale) {
     auditLog,
     features,
     seciLayers,
+    contentTemplates,
+    needUnits,
+    needPriorities,
+    transferSessionTypes,
+    domains,
+    transferDurations,
   ] = await Promise.all([
     listCategories(locale),
     listKnowledgeTypeLabels(locale),
@@ -93,6 +101,12 @@ export async function getPlatformBootstrap(locale: Locale) {
     listAuditLog(locale),
     listFeatures(locale),
     listSeciLayers(locale),
+    listContentTemplates(locale),
+    listLookups("need_unit", locale),
+    listLookups("need_priority", locale),
+    listTransferSessionTypeOptions(locale),
+    listLookups("domain", locale),
+    listLookups("transfer_duration", locale),
   ])
 
   return {
@@ -127,6 +141,12 @@ export async function getPlatformBootstrap(locale: Locale) {
     auditLog,
     features,
     seciLayers,
+    contentTemplates,
+    needUnits,
+    needPriorities,
+    transferSessionTypes,
+    domains,
+    transferDurations,
     workflowStages,
     workflowDefinitions,
     broadcastMessages,

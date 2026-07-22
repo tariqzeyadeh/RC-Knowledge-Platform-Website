@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Check, Repeat, User2, Calendar, ListChecks, ClipboardCheck,
   ArrowLeft, ArrowRight, CheckCircle2, FileText,
@@ -10,23 +10,21 @@ import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getTransferSessionTypes } from "@/config/transfer-session-types"
 import { useLocale, useT } from "@/hooks/use-locale"
+import { useLocalizedData } from "@/hooks/use-localized-data"
 import { cn } from "@/utils"
 
 const stepKeys = ["typeDomain", "details", "agenda", "review"] as const
-const domainKeys = ["projects", "procurement", "digital", "strategy", "hr", "communications", "governance"] as const
-const durationKeys = ["m45", "m60", "m75", "m90"] as const
 
 export function ScheduleSessionPage() {
   const t = useT()
-  const { locale, dir, dict } = useLocale()
-  const sessionTypes = useMemo(() => getTransferSessionTypes(locale), [locale])
+  const { dir, dict } = useLocale()
+  const { transferSessionTypes, domains, transferDurations, refresh } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
-  const [sessionType, setSessionType] = useState(() => getTransferSessionTypes(locale)[0].id)
-  const [domain, setDomain] = useState<(typeof domainKeys)[number]>("projects")
-  const [duration, setDuration] = useState<(typeof durationKeys)[number]>("m60")
+  const [sessionTypeId, setSessionTypeId] = useState("")
+  const [domainId, setDomainId] = useState("")
+  const [durationId, setDurationId] = useState("")
   const [title, setTitle] = useState("")
   const [expert, setExpert] = useState("")
   const [facilitator, setFacilitator] = useState(dict.shell.userName)
@@ -40,6 +38,16 @@ export function ScheduleSessionPage() {
 
   const emDash = t("common.emDash")
 
+  useEffect(() => {
+    if (!sessionTypeId && transferSessionTypes[0]) setSessionTypeId(transferSessionTypes[0].id)
+    if (!domainId && domains[0]) setDomainId(domains[0].id)
+    if (!durationId && transferDurations[0]) setDurationId(transferDurations[0].id)
+  }, [sessionTypeId, domainId, durationId, transferSessionTypes, domains, transferDurations])
+
+  const selectedType = transferSessionTypes.find((item) => item.id === sessionTypeId)
+  const selectedDomain = domains.find((item) => item.id === domainId)
+  const selectedDuration = transferDurations.find((item) => item.id === durationId)
+
   async function handleSubmit() {
     if (!title.trim() || !expert.trim() || !date) return
     setSubmitting(true)
@@ -51,11 +59,11 @@ export function ScheduleSessionPage() {
           title: title.trim(),
           expert: expert.trim(),
           date,
-          domainId: `domain-${domain}`,
+          domainId,
           departmentLabel: department.trim() || undefined,
-          durationId: `td-${duration}`,
+          durationId,
           facilitator: facilitator.trim(),
-          sessionTypeId: sessionType,
+          sessionTypeId,
           attendees: Number(attendees) || 0,
           agenda: agenda.filter(Boolean),
           summary: summary.trim(),
@@ -64,6 +72,7 @@ export function ScheduleSessionPage() {
       if (!response.ok) throw new Error("schedule_failed")
       const payload = (await response.json()) as { session: { id: string } }
       setScheduledId(payload.session.id)
+      await refresh()
       setDone(true)
     } catch {
       setSubmitting(false)
@@ -86,14 +95,13 @@ export function ScheduleSessionPage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <ButtonLink href="/transfer">{t("common.returnToSessions")}</ButtonLink>
-            <Button variant="outline" onClick={() => { setDone(false); setStep(1) }}>{t("common.scheduleAnother")}</Button>
+            {scheduledId ? <ButtonLink href={`/transfer/${scheduledId}`}>{t("common.details")}</ButtonLink> : null}
+            <Button variant="outline" onClick={() => { setDone(false); setStep(1); setScheduledId("") }}>{t("common.scheduleAnother")}</Button>
           </div>
         </div>
       </AppShell>
     )
   }
-
-  const selectedType = sessionTypes.find((st) => st.id === sessionType)
 
   return (
     <AppShell
@@ -139,37 +147,43 @@ export function ScheduleSessionPage() {
               <div>
                 <h2 className="mb-1 font-heading text-lg font-bold text-foreground">{t("pages.transfer.scheduleWizard.step1.title")}</h2>
                 <p className="mb-5 text-sm text-muted-foreground">{t("pages.transfer.scheduleWizard.step1.description")}</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {sessionTypes.map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setSessionType(st.id)}
-                      className={cn(
-                        "rounded-lg border p-4 text-start transition-colors",
-                        sessionType === st.id ? "border-primary bg-secondary/50" : "border-border hover:border-primary/40",
-                      )}
-                    >
-                      <p className="text-sm font-medium text-foreground">{st.label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{st.desc}</p>
-                    </button>
-                  ))}
-                </div>
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+                ) : error || transferSessionTypes.length === 0 ? (
+                  <p className="text-sm text-destructive">{t("common.noResults")}</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {transferSessionTypes.map((st) => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setSessionTypeId(st.id)}
+                        className={cn(
+                          "rounded-lg border p-4 text-start transition-colors",
+                          sessionTypeId === st.id ? "border-primary bg-secondary/50" : "border-border hover:border-primary/40",
+                        )}
+                      >
+                        <p className="text-sm font-medium text-foreground">{st.label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{st.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <h3 className="mb-3 font-heading text-base font-bold text-foreground">{t("pages.transfer.scheduleWizard.step1.domain")}</h3>
                 <div className="flex flex-wrap gap-2">
-                  {domainKeys.map((key) => (
+                  {domains.map((item) => (
                     <button
-                      key={key}
+                      key={item.id}
                       type="button"
-                      onClick={() => setDomain(key)}
+                      onClick={() => setDomainId(item.id)}
                       className={cn(
                         "rounded-full border px-3 py-1.5 text-xs transition-colors",
-                        domain === key ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40",
+                        domainId === item.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40",
                       )}
                     >
-                      {t(`pages.transfer.scheduleWizard.domains.${key}`)}
+                      {item.label}
                     </button>
                   ))}
                 </div>
@@ -216,17 +230,17 @@ export function ScheduleSessionPage() {
                 <div>
                   <Label>{t("pages.transfer.scheduleWizard.step2.duration")}</Label>
                   <div className="mt-1.5 flex flex-wrap gap-2">
-                    {durationKeys.map((key) => (
+                    {transferDurations.map((item) => (
                       <button
-                        key={key}
+                        key={item.id}
                         type="button"
-                        onClick={() => setDuration(key)}
+                        onClick={() => setDurationId(item.id)}
                         className={cn(
                           "rounded-md border px-3 py-1.5 text-xs transition-colors",
-                          duration === key ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
+                          durationId === item.id ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
                         )}
                       >
-                        {t(`pages.transfer.scheduleWizard.durations.${key}`)}
+                        {item.label}
                       </button>
                     ))}
                   </div>
@@ -274,13 +288,13 @@ export function ScheduleSessionPage() {
               <p className="mb-5 text-sm text-muted-foreground">{t("pages.transfer.scheduleWizard.step4.description")}</p>
               <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                 <Row label={t("pages.transfer.scheduleWizard.review.sessionType")} value={selectedType?.label ?? ""} />
-                <Row label={t("pages.transfer.scheduleWizard.review.domain")} value={t(`pages.transfer.scheduleWizard.domains.${domain}`)} />
+                <Row label={t("pages.transfer.scheduleWizard.review.domain")} value={selectedDomain?.label ?? emDash} />
                 <Row label={t("pages.transfer.scheduleWizard.review.title")} value={title || emDash} />
                 <Row label={t("pages.transfer.scheduleWizard.review.expert")} value={expert || emDash} />
                 <Row label={t("pages.transfer.scheduleWizard.review.facilitator")} value={facilitator} />
                 <Row label={t("pages.transfer.scheduleWizard.review.department")} value={department || emDash} />
                 <Row label={t("pages.transfer.scheduleWizard.review.date")} value={date || emDash} />
-                <Row label={t("pages.transfer.scheduleWizard.review.duration")} value={t(`pages.transfer.scheduleWizard.durations.${duration}`)} />
+                <Row label={t("pages.transfer.scheduleWizard.review.duration")} value={selectedDuration?.label ?? emDash} />
                 <Row label={t("pages.transfer.scheduleWizard.review.attendees")} value={attendees} />
                 <Row label={t("pages.transfer.scheduleWizard.review.agendaItems")} value={`${agenda.filter(Boolean).length} ${t("common.agendaItem")}`} />
               </dl>

@@ -6,6 +6,7 @@ import {
   Calendar, User2, ArrowLeft, Plus, Sparkles,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ export function CommunityDetailView({ id }: { id: string }) {
         { label: community.name },
       ]}
     >
+      <DemoDataGate>
       <div className="mb-6">
         <Link href="/communities" className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} /> {t("common.backToCommunities")}
@@ -177,6 +179,7 @@ export function CommunityDetailView({ id }: { id: string }) {
           )}
         </aside>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

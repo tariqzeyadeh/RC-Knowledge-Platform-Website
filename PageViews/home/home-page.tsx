@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowUpRight, FilePlus2, Clock,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { AssetCard, SectionHeading } from "@/components/shared"
+import { AssetCard, SectionHeading, DemoDataGate } from "@/components/shared"
 import { ActivityAreaChart, HealthPieChart } from "@/components/charts"
 import { useAuth } from "@/hooks/use-auth"
 import { useLocale, useT } from "@/hooks/use-locale"
@@ -116,6 +116,7 @@ export function HomePage() {
         </div>
       </section>
 
+      <DemoDataGate>
       {role === "seeker" && (
         <section className="mb-10">
           <SectionHeading title={t("pages.home.topSearchesTitle")} />
@@ -147,6 +148,7 @@ export function HomePage() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-xs text-muted-foreground">{t("pages.home.myContributionsDesc")}</p>
+              {/* STATIC_DEMO_DATA: placeholder contribution status cards
               {[
                 { label: t("pages.home.contributionDraft"), status: "draft" as const },
                 { label: t("pages.home.contributionReview"), status: "review" as const },
@@ -157,6 +159,7 @@ export function HomePage() {
                   <Badge variant="secondary">{t(`presentation.status.${item.status}`)}</Badge>
                 </div>
               ))}
+              */}
               <ButtonLink href="/upload" variant="outline" size="sm" className="mt-2">
                 <FilePlus2 className="h-4 w-4" />
                 {t("pages.home.addContribution")}
@@ -321,6 +324,7 @@ export function HomePage() {
           })}
         </div>
       </section>
+      </DemoDataGate>
     </AppShell>
   )
 }

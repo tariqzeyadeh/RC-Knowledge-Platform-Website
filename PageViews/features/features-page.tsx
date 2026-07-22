@@ -5,6 +5,7 @@ import { ChevronDown, Target, Lightbulb, ShieldCheck, BadgeCheck } from "lucide-
 import { AppShell } from "@/components/layout/app-shell"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
+import { DemoDataGate } from "@/components/shared"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/utils"
 
@@ -22,6 +23,7 @@ export function FeaturesPage() {
       description={t("pages.features.description")}
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.features.title") }]}
     >
+      <DemoDataGate>
       <div className="mb-6 flex flex-wrap gap-2">
         <FilterChip label={t("pages.features.allFeatures")} count={features.length} active={layer === "all"} onClick={() => setLayer("all")} />
         {seciLayers.map((l) => (
@@ -82,6 +84,7 @@ export function FeaturesPage() {
           )
         })}
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

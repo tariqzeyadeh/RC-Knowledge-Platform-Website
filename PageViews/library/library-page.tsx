@@ -4,7 +4,7 @@ import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Search, LayoutGrid, List, SlidersHorizontal } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { AssetCard, ConfidentialityBadge, FilterChip, StatusBadge } from "@/components/shared"
+import { AssetCard, ConfidentialityBadge, FilterChip, StatusBadge, DemoDataGate } from "@/components/shared"
 import { useAssetFilters } from "@/hooks/use-asset-filters"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
@@ -122,6 +122,7 @@ function LibraryPageContent() {
             </div>
           </div>
 
+          <DemoDataGate>
           {filtered.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
               {t("common.noResults")}
@@ -153,6 +154,7 @@ function LibraryPageContent() {
               ))}
             </div>
           )}
+          </DemoDataGate>
         </div>
       </div>
     </AppShell>

@@ -9,7 +9,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import {
   ActivityAreaChart, SearchLineChart, DepartmentBarChart, HealthPieChart,
 } from "@/components/charts"
-import { RankProgressList } from "@/components/shared"
+import { RankProgressList, DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { useMemo } from "react"
@@ -110,6 +110,7 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      <DemoDataGate>
       <div className="mb-6 flex items-center justify-end gap-2">
         <Button variant="outline" size="sm"><FileBarChart className="h-4 w-4" /> {t("pages.analytics.monthlyReport")}</Button>
         <Button size="sm"><Download className="h-4 w-4" /> {t("common.export")}</Button>
@@ -182,6 +183,7 @@ export function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

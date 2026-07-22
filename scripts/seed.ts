@@ -99,13 +99,102 @@ async function insertLookup(
   sortOrder: number,
   labels: { ar: string; en: string },
   metadata?: Record<string, unknown>,
+  descriptions?: { ar: string; en: string },
 ) {
   const db = getDb()
   await db.insert(lookups).values({ id, group, sortOrder, isActive: true, metadata })
   await db.insert(lookupTranslations).values([
-    { lookupId: id, locale: "ar", label: labels.ar },
-    { lookupId: id, locale: "en", label: labels.en },
+    { lookupId: id, locale: "ar", label: labels.ar, description: descriptions?.ar },
+    { lookupId: id, locale: "en", label: labels.en, description: descriptions?.en },
   ])
+}
+
+async function seedContentTemplateLookups() {
+  const templates = [
+    {
+      id: "tpl-procedure-guide",
+      knowledgeTypeId: "procedure-guide",
+      labels: { ar: "دليل إجرائي موحّد", en: "Unified procedure guide" },
+      descriptions: {
+        ar: "قالب لتوثيق الإجراءات والخطوات والمسؤوليات وفق معايير المكتب.",
+        en: "Template for documenting procedures, steps, and responsibilities per office standards.",
+      },
+    },
+    {
+      id: "tpl-lesson-learned",
+      knowledgeTypeId: "lesson-learned",
+      labels: { ar: "نموذج توثيق درس مستفاد", en: "Lesson learned documentation form" },
+      descriptions: {
+        ar: "حقول إلزامية: السياق، المشكلة، الإجراء، النتيجة، التوصية، وقابلية إعادة الاستخدام.",
+        en: "Required fields: context, problem, action, outcome, recommendation, and reusability.",
+      },
+    },
+    {
+      id: "tpl-project-plan",
+      knowledgeTypeId: "template-form",
+      labels: { ar: "قالب خطة إدارة مشروع (PMP)", en: "Project management plan (PMP) template" },
+      descriptions: {
+        ar: "قالب يغطي النطاق والجدول الزمني والموارد والمخاطر والاتصالات.",
+        en: "Template covering scope, timeline, resources, risks, and communications.",
+      },
+    },
+    {
+      id: "tpl-policy",
+      knowledgeTypeId: "policy",
+      labels: { ar: "قالب سياسة / لائحة داخلية", en: "Internal policy / regulation template" },
+      descriptions: {
+        ar: "هيكل موحّد للسياسات المعتمدة مع أقسام الغرض والنطاق والمسؤوليات.",
+        en: "Unified structure for approved policies with purpose, scope, and responsibilities.",
+      },
+    },
+    {
+      id: "tpl-expertise-report",
+      knowledgeTypeId: "expertise-report",
+      labels: { ar: "تقرير خبرة موحّد", en: "Unified expertise report" },
+      descriptions: {
+        ar: "قالب لتوثيق الخبرة المتخصصة والتوصيات والدروس القابلة للنقل.",
+        en: "Template for documenting specialized expertise, recommendations, and transferable lessons.",
+      },
+    },
+    {
+      id: "tpl-meeting-minutes",
+      knowledgeTypeId: "meeting-minutes",
+      labels: { ar: "نموذج محضر اجتماع / لجنة", en: "Meeting / committee minutes form" },
+      descriptions: {
+        ar: "قالب لتوثيق الحضور والقرارات والمهام ومتابعة التنفيذ.",
+        en: "Template for documenting attendance, decisions, tasks, and follow-up.",
+      },
+    },
+    {
+      id: "tpl-study-research",
+      knowledgeTypeId: "study-research",
+      labels: { ar: "قالب دراسة / بحث", en: "Study / research template" },
+      descriptions: {
+        ar: "هيكل موحّد للدراسات والتحليلات مع المنهجية والنتائج والتوصيات.",
+        en: "Unified structure for studies and analyses with methodology, findings, and recommendations.",
+      },
+    },
+    {
+      id: "tpl-transfer-output",
+      knowledgeTypeId: "procedure-guide",
+      labels: { ar: "قالب توثيق مخرجات نقل المعرفة", en: "Knowledge transfer output template" },
+      descriptions: {
+        ar: "قالب F-02 لتوثيق مخرجات جلسات نقل المعرفة وتحويلها لأصول معتمدة.",
+        en: "F-02 template for documenting knowledge transfer session outputs and converting them to approved assets.",
+      },
+    },
+  ]
+
+  for (const [index, template] of templates.entries()) {
+    await insertLookup(
+      "content_template",
+      template.id,
+      index,
+      template.labels,
+      { knowledgeTypeId: template.knowledgeTypeId },
+      template.descriptions,
+    )
+  }
 }
 
 async function seedLookups() {
@@ -231,6 +320,8 @@ async function seedLookups() {
       { ar: suggestion, en: analyticsEn.searchSuggestions[index] ?? suggestion },
     )
   }
+
+  await seedContentTemplateLookups()
 }
 
 function resolveKnowledgeTypeId(typeLabel: string) {

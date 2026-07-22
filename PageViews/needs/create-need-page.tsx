@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Check, ListChecks, Target, ClipboardCheck,
   ArrowLeft, ArrowRight, CheckCircle2,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
+import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,22 +15,30 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/utils"
 
 const stepKeys = ["describe", "justify", "review"] as const
-const unitKeys = ["procurement", "pmo", "digital", "strategy", "hr", "legal", "dataGov"] as const
-const priorityKeys = ["high", "medium", "low"] as const
 
 export function CreateNeedPage() {
   const t = useT()
   const { dir } = useLocale()
+  const { needUnits, needPriorities, loading, error, refresh } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
   const [title, setTitle] = useState("")
-  const [unit, setUnit] = useState<(typeof unitKeys)[number]>("procurement")
+  const [unitId, setUnitId] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
   const [expectedOutcome, setExpectedOutcome] = useState("")
-  const [priority, setPriority] = useState<(typeof priorityKeys)[number]>("medium")
+  const [priorityId, setPriorityId] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [createdNeedId, setCreatedNeedId] = useState("")
   const emDash = t("common.emDash")
+
+  useEffect(() => {
+    if (!unitId && needUnits[0]) setUnitId(needUnits[0].id)
+    if (!priorityId && needPriorities[0]) setPriorityId(needPriorities[0].id)
+  }, [unitId, priorityId, needUnits, needPriorities])
+
+  const selectedUnit = needUnits.find((item) => item.id === unitId)
+  const selectedPriority = needPriorities.find((item) => item.id === priorityId)
 
   async function handleSubmit() {
     if (!title.trim() || !description.trim() || !justification.trim() || !expectedOutcome.trim()) return
@@ -40,14 +49,17 @@ export function CreateNeedPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          unitId: `nu-${unit}`,
-          priorityId: `np-${priority}`,
+          unitId,
+          priorityId,
           description: description.trim(),
           justification: justification.trim(),
           expectedOutcome: expectedOutcome.trim(),
         }),
       })
       if (!response.ok) throw new Error("create_need_failed")
+      const payload = (await response.json()) as { need: { id: string } }
+      setCreatedNeedId(payload.need.id)
+      await refresh()
       setDone(true)
     } catch {
       setSubmitting(false)
@@ -71,7 +83,8 @@ export function CreateNeedPage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <ButtonLink href="/needs">{t("common.returnToNeeds")}</ButtonLink>
-            <Button variant="outline" onClick={() => { setDone(false); setStep(1) }}>{t("common.submitAnotherNeed")}</Button>
+            {createdNeedId ? <ButtonLink href={`/needs/${createdNeedId}`}>{t("common.details")}</ButtonLink> : null}
+            <Button variant="outline" onClick={() => { setDone(false); setStep(1); setCreatedNeedId("") }}>{t("common.submitAnotherNeed")}</Button>
           </div>
         </div>
       </AppShell>
@@ -124,21 +137,27 @@ export function CreateNeedPage() {
               </div>
               <div>
                 <Label>{t("pages.needs.createWizard.step1.unit")}</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {unitKeys.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setUnit(key)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs transition-colors",
-                        unit === key ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40",
-                      )}
-                    >
-                      {t(`pages.needs.createWizard.units.${key}`)}
-                    </button>
-                  ))}
-                </div>
+                {loading ? (
+                  <p className="mt-2 text-sm text-muted-foreground">{t("common.loading")}</p>
+                ) : error || needUnits.length === 0 ? (
+                  <p className="mt-2 text-sm text-destructive">{t("common.noResults")}</p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {needUnits.map((unit) => (
+                      <button
+                        key={unit.id}
+                        type="button"
+                        onClick={() => setUnitId(unit.id)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                          unitId === unit.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40",
+                        )}
+                      >
+                        {unit.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="description">{t("pages.needs.createWizard.step1.description")}</Label>
@@ -161,17 +180,17 @@ export function CreateNeedPage() {
               <div>
                 <Label>{t("common.priority")}</Label>
                 <div className="mt-2 flex gap-2">
-                  {priorityKeys.map((key) => (
+                  {needPriorities.map((priority) => (
                     <button
-                      key={key}
+                      key={priority.id}
                       type="button"
-                      onClick={() => setPriority(key)}
+                      onClick={() => setPriorityId(priority.id)}
                       className={cn(
                         "rounded-md border px-4 py-2 text-sm transition-colors",
-                        priority === key ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
+                        priorityId === priority.id ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
                       )}
                     >
-                      {t(`enums.needPriority.${key}`)}
+                      {priority.label}
                     </button>
                   ))}
                 </div>
@@ -184,8 +203,8 @@ export function CreateNeedPage() {
               <h2 className="mb-5 font-heading text-lg font-bold text-foreground">{t("pages.needs.createWizard.step3.title")}</h2>
               <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                 <Row label={t("pages.needs.createWizard.review.title")} value={title || emDash} />
-                <Row label={t("pages.needs.createWizard.review.unit")} value={t(`pages.needs.createWizard.units.${unit}`)} />
-                <Row label={t("pages.needs.createWizard.review.priority")} value={t(`enums.needPriority.${priority}`)} />
+                <Row label={t("pages.needs.createWizard.review.unit")} value={selectedUnit?.label ?? emDash} />
+                <Row label={t("pages.needs.createWizard.review.priority")} value={selectedPriority?.label ?? emDash} />
                 <Row label={t("pages.needs.createWizard.review.description")} value={description ? `${description.slice(0, 60)}...` : emDash} />
               </dl>
               <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-4 text-xs leading-relaxed text-muted-foreground">

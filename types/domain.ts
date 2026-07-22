@@ -144,6 +144,7 @@ export type ReviewItem = {
   stage: ReviewStage
   sla: string
   priority: ReviewPriority
+  assetId?: string
 }
 
 export type KnowledgeNeed = {

@@ -1,24 +1,42 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   FileText, Eye, Star, Download, Share2, Bookmark, History, Building2, User2,
   Calendar, RefreshCw, ThumbsUp, ThumbsDown, Link2, ShieldAlert,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { AssetCard, ConfidentialityBadge, StatusBadge } from "@/components/shared"
+import { AssetCard, ConfidentialityBadge, StatusBadge, DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/utils"
 
 export function KnowledgeDetailView({ id }: { id: string }) {
   const t = useT()
   const { formatNumber } = useLocale()
-  const { assets, versionHistory, getAsset, getCategory } = useLocalizedData()
+  const { assets, getAsset, getCategory } = useLocalizedData()
+  const [attachments, setAttachments] = useState<Array<{ id: string; fileName: string; sizeBytes: number }>>([])
   const asset = getAsset(id)
+
+  useEffect(() => {
+    if (!asset) return
+    fetch(`/api/attachments?entityType=knowledge_asset&entityId=${encodeURIComponent(id)}`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) return
+        const payload = (await response.json()) as { attachments: Array<{ id: string; fileName: string; sizeBytes: number }> }
+        setAttachments(payload.attachments)
+      })
+      .catch(() => {})
+  }, [asset, id])
+
   if (!asset) return null
+
+  const versionHistory: Array<{ v: string; date: string; by: string; note: string }> = []
+  const primaryAttachment = attachments[0]
 
   const category = getCategory(asset.category)
   const related = assets.filter((a) => a.id !== asset.id && (a.category === asset.category || a.type === asset.type)).slice(0, 3)
@@ -30,6 +48,7 @@ export function KnowledgeDetailView({ id }: { id: string }) {
       { label: t("pages.library.title"), href: "/library" },
       { label: asset.id },
     ]}>
+      <DemoDataGate>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <article>
           <div className="rounded-xl border border-border bg-card p-6">
@@ -50,7 +69,17 @@ export function KnowledgeDetailView({ id }: { id: string }) {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button><Download className="h-4 w-4" /> {t("common.download")} ({asset.fileType})</Button>
+              {primaryAttachment ? (
+                <a
+                  href={`/api/attachments?id=${primaryAttachment.id}`}
+                  download={primaryAttachment.fileName}
+                  className={cn(buttonVariants())}
+                >
+                  <Download className="h-4 w-4" /> {t("common.download")} ({asset.fileType})
+                </a>
+              ) : (
+                <Button disabled><Download className="h-4 w-4" /> {t("common.download")} ({asset.fileType})</Button>
+              )}
               <Button variant="outline"><Bookmark className="h-4 w-4" /> {t("common.bookmark")}</Button>
               <Button variant="outline"><Share2 className="h-4 w-4" /> {t("common.share")}</Button>
             </div>
@@ -72,9 +101,12 @@ export function KnowledgeDetailView({ id }: { id: string }) {
                 <FileText className="h-6 w-6" />
               </span>
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">{asset.title}.{asset.fileType.toLowerCase()}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {primaryAttachment?.fileName ?? `${asset.title}.${asset.fileType.toLowerCase()}`}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {t("pages.knowledgeDetail.approvedDoc").replace("{version}", asset.version)}
+                  {primaryAttachment ? ` · ${Math.round(primaryAttachment.sizeBytes / 1024)} KB` : ""}
                 </p>
               </div>
             </div>
@@ -90,6 +122,7 @@ export function KnowledgeDetailView({ id }: { id: string }) {
             </CardContent>
           </Card>
 
+          {versionHistory.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-heading text-base"><History className="h-4 w-4" /> {t("pages.knowledgeDetail.versionHistory")}</CardTitle>
@@ -110,6 +143,7 @@ export function KnowledgeDetailView({ id }: { id: string }) {
               </ol>
             </CardContent>
           </Card>
+          )}
         </article>
 
         <aside className="space-y-6">
@@ -155,6 +189,7 @@ export function KnowledgeDetailView({ id }: { id: string }) {
           {related.map((r) => <AssetCard key={r.id} asset={r} categoryName={getCategory(r.category)?.name} />)}
         </div>
       </section>
+      </DemoDataGate>
     </AppShell>
   )
 }

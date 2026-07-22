@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { auditResultKey } from "@/i18n/enum-maps"
+import { DemoDataGate } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/utils"
@@ -27,6 +28,7 @@ export function AuditPage() {
         <Button variant="outline" size="sm"><Download className="h-4 w-4" /> {t("common.exportLog")}</Button>
       </div>
 
+      <DemoDataGate>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
@@ -71,6 +73,7 @@ export function AuditPage() {
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
         {t("pages.governance.siemNote")}
       </p>
+      </DemoDataGate>
     </AppShell>
   )
 }

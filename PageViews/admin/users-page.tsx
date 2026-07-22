@@ -5,6 +5,7 @@ import { Pencil, Plus, Search, Trash2, UserCog, Users } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { summarizeUsersByRole } from "@/services/admin/user-management.service"
+import { DemoDataGate } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -123,6 +124,7 @@ export function UsersPage() {
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.users.title") }]}
     >
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <DemoDataGate>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
@@ -154,6 +156,7 @@ export function UsersPage() {
             ))}
           </CardContent>
         </Card>
+        </DemoDataGate>
       </div>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -177,6 +180,7 @@ export function UsersPage() {
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <DemoDataGate>
         <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40 text-start">
@@ -240,6 +244,7 @@ export function UsersPage() {
             ))}
           </tbody>
         </table>
+        </DemoDataGate>
       </div>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && closeEdit()}>

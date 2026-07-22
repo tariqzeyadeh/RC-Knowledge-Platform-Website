@@ -1,4 +1,4 @@
-import { getLocaleFromRequest, jsonResponse } from "@/lib/api/http"
+import { getLocaleFromRequest, jsonResponse, errorResponse } from "@/lib/api/http"
 import { requireSession } from "@/lib/api/session"
 import { createTransferSession, listTransferSessions } from "@/lib/db/repositories/collaboration.repository"
 import { resolveLookupIdByLabel } from "@/lib/db/repositories/lookup.repository"
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await requireSession(["contributor", "reviewer", "admin"])
-  if (!user) return jsonResponse({ error: "unauthorized" }, { status: 401 })
+  if (!user) return errorResponse("unauthorized", 401)
 
   const locale = getLocaleFromRequest(request)
   const body = (await request.json()) as {
@@ -27,6 +27,10 @@ export async function POST(request: Request) {
     attendees: number
     agenda: string[]
     summary: string
+  }
+
+  if (!body.title?.trim() || !body.expert?.trim() || !body.date || !body.domainId || !body.durationId || !body.sessionTypeId) {
+    return errorResponse("invalid_request", 400)
   }
 
   const departmentId =

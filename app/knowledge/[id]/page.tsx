@@ -1,1 +1,1 @@
-export { KnowledgeDetailPage as default, generateStaticParams } from "@/pages/knowledge/knowledge-detail-page"
+export { KnowledgeDetailPage as default } from "@/pages/knowledge/knowledge-detail-page"

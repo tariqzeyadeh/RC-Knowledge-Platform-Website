@@ -5,7 +5,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Repeat, Calendar, User2, FileOutput, Plus, CheckCircle2, Clock, FileEdit } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { FilterChip } from "@/components/shared"
+import { FilterChip, DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { getTransferSessionTypes } from "@/config/transfer-session-types"
@@ -82,6 +82,7 @@ export function TransferPage() {
             <ButtonLink href="/transfer/schedule"><Plus className="h-4 w-4" /> {t("pages.transfer.schedule")}</ButtonLink>
           </div>
 
+          <DemoDataGate>
           <div className="space-y-4">
             {filtered.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
@@ -123,6 +124,7 @@ export function TransferPage() {
               })
             )}
           </div>
+          </DemoDataGate>
         </div>
       </div>
     </AppShell>

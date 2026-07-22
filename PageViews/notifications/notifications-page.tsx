@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import {
   Bell, ClipboardCheck, CheckCircle2, XCircle, FileText, AlarmClock, Lock, CheckCheck,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button } from "@/components/ui/button"
@@ -20,8 +22,20 @@ const typeMap: Record<string, { icon: React.ComponentType<{ className?: string }
 
 export function NotificationsPage() {
   const t = useT()
-  const { notifications } = useLocalizedData()
+  const { notifications, refresh } = useLocalizedData()
+  const [marking, setMarking] = useState(false)
   const unread = notifications.filter((n) => n.unread).length
+
+  async function handleMarkAllRead() {
+    setMarking(true)
+    try {
+      const response = await fetch("/api/notifications", { method: "PATCH" })
+      if (!response.ok) return
+      await refresh()
+    } finally {
+      setMarking(false)
+    }
+  }
 
   return (
     <AppShell
@@ -34,10 +48,13 @@ export function NotificationsPage() {
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Bell className="h-4 w-4" /> {t("common.youHave")} <span className="font-bold text-foreground">{unread}</span> {t("common.unreadNotifications")}
           </p>
-          <Button variant="outline" size="sm"><CheckCheck className="h-4 w-4" /> {t("common.markAllRead")}</Button>
+          <Button variant="outline" size="sm" disabled={marking || unread === 0} onClick={handleMarkAllRead}>
+            <CheckCheck className="h-4 w-4" /> {t("common.markAllRead")}
+          </Button>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <DemoDataGate>
           {notifications.map((n) => {
             const typeInfo = typeMap[n.type]
             const Icon = typeInfo.icon
@@ -58,6 +75,7 @@ export function NotificationsPage() {
               </div>
             )
           })}
+          </DemoDataGate>
         </div>
       </div>
     </AppShell>

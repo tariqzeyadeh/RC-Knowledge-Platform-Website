@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/") ||
     pathname.includes(".")
   ) {
     return NextResponse.next()
@@ -19,7 +19,6 @@ export function middleware(request: NextRequest) {
   const sessionRaw = request.cookies.get(SESSION_COOKIE)?.value
   const user = sessionRaw ? decodeSession(sessionRaw) : null
 
-  // Always allow login and forbidden pages — login must stay reachable to switch accounts
   if (PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.next()
   }

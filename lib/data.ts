@@ -1,6 +1,9 @@
 /**
  * Backward-compatible barrel — prefer direct imports from types/, config/, data/, repositories/, services/.
  * @deprecated Import from layered modules instead of this file for new code.
+ *
+ * STATIC_DEMO_DATA: fixture re-exports below are preserved for seeding/reference — not used by page UIs
+ * when RENDER_STATIC_DEMO_DATA is false in config/demo-display.ts.
  */
 
 export * from "@/types/domain"

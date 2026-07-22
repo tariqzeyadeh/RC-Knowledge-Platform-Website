@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ClipboardCheck, Check, X, Clock, User2, Building2, ArrowLeft } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { reviewPriorityKey, reviewStageKey } from "@/i18n/enum-maps"
@@ -27,21 +28,28 @@ const workflowKeys = ["draft", "review", "approval", "publish"] as const
 export function ReviewPage() {
   const t = useT()
   const { dir } = useLocale()
-  const { reviewQueue } = useLocalizedData()
+  const { reviewQueue, refresh } = useLocalizedData()
   const [queue, setQueue] = useState(reviewQueue)
+  const [acting, setActing] = useState<string | null>(null)
 
   useEffect(() => {
     setQueue(reviewQueue)
   }, [reviewQueue])
 
   async function handleReviewAction(id: string, action: "approve" | "return") {
-    const response = await fetch(`/api/review-queue/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    })
-    if (!response.ok) return
-    setQueue((items) => items.filter((item) => item.id !== id))
+    setActing(id)
+    try {
+      const response = await fetch(`/api/review-queue/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      if (!response.ok) return
+      setQueue((items) => items.filter((item) => item.id !== id))
+      await refresh()
+    } finally {
+      setActing(null)
+    }
   }
 
   return (
@@ -70,6 +78,7 @@ export function ReviewPage() {
       </div>
 
       <div className="space-y-3">
+        <DemoDataGate>
         {queue.map((r) => {
           const stageKey = reviewStageKey[r.stage] ?? "draft"
           const priorityKey = reviewPriorityKey[r.priority] ?? "normal"
@@ -101,16 +110,17 @@ export function ReviewPage() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-                <Button variant="outline" size="sm" onClick={() => handleReviewAction(r.id, "return")}>
+                <Button variant="outline" size="sm" disabled={acting === r.id} onClick={() => handleReviewAction(r.id, "return")}>
                   <X className="h-4 w-4" /> {t("pages.review.returnForEdit")}
                 </Button>
-                <Button size="sm" onClick={() => handleReviewAction(r.id, "approve")}>
+                <Button size="sm" disabled={acting === r.id} onClick={() => handleReviewAction(r.id, "approve")}>
                   <Check className="h-4 w-4" /> {t("pages.review.approveAndPublish")}
                 </Button>
               </div>
             </div>
           )
         })}
+        </DemoDataGate>
       </div>
     </AppShell>
   )

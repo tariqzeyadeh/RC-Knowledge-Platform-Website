@@ -4,6 +4,7 @@ import { ShieldCheck, Check, Minus, Users, Plus } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
+import { DemoDataGate } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/utils"
@@ -26,6 +27,7 @@ export function RolesPage() {
         <Button><Plus className="h-4 w-4" /> {t("common.addRole")}</Button>
       </div>
 
+      <DemoDataGate>
       <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {roles.map((r) => (
           <Card key={r.id}>
@@ -79,6 +81,7 @@ export function RolesPage() {
           </tbody>
         </table>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

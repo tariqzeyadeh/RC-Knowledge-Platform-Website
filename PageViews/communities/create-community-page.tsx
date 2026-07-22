@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Check, Users, Target, BookOpen, ClipboardCheck,
   ArrowLeft, ArrowRight, CheckCircle2,
@@ -19,11 +19,12 @@ const stepKeys = ["basics", "goalsTopics", "charter", "review"] as const
 export function CreateCommunityPage() {
   const t = useT()
   const { dir, dict, formatList } = useLocale()
-  const { categories } = useLocalizedData()
+  const { categories, domains, refresh } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
+  const [createdCommunityId, setCreatedCommunityId] = useState("")
   const [name, setName] = useState("")
-  const [domain, setDomain] = useState(categories[0]?.id ?? "")
+  const [domain, setDomain] = useState("")
   const [desc, setDesc] = useState("")
   const [owner, setOwner] = useState(dict.shell.userName)
   const [objectives, setObjectives] = useState(["", ""])
@@ -32,8 +33,16 @@ export function CreateCommunityPage() {
   const [moderators, setModerators] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const topicOptions = categories.find((c) => c.id === domain)?.topics ?? []
+  const domainCategoryId = domain.startsWith("domain-") ? domain.replace("domain-", "") : domain
+  const topicOptions = categories.find((c) => c.id === domainCategoryId)?.topics ?? []
   const emDash = t("common.emDash")
+
+  useEffect(() => {
+    if (!domain) {
+      if (domains[0]) setDomain(domains[0].id)
+      else if (categories[0]) setDomain(categories[0].id)
+    }
+  }, [domain, domains, categories])
 
   async function handleSubmit() {
     if (!name.trim() || !desc.trim()) return
@@ -54,8 +63,13 @@ export function CreateCommunityPage() {
         }),
       })
       if (!response.ok) throw new Error("create_community_failed")
+      const payload = (await response.json()) as { community: { id: string } }
+      setCreatedCommunityId(payload.community.id)
+      await refresh()
       setDone(true)
     } catch {
+      // keep form open on failure
+    } finally {
       setSubmitting(false)
     }
   }
@@ -77,7 +91,8 @@ export function CreateCommunityPage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <ButtonLink href="/communities">{t("common.returnToCommunities")}</ButtonLink>
-            <Button variant="outline" onClick={() => { setDone(false); setStep(1) }}>{t("common.createAnother")}</Button>
+            {createdCommunityId ? <ButtonLink href={`/communities/${createdCommunityId}`}>{t("common.details")}</ButtonLink> : null}
+            <Button variant="outline" onClick={() => { setDone(false); setStep(1); setCreatedCommunityId("") }}>{t("common.createAnother")}</Button>
           </div>
         </div>
       </AppShell>
@@ -131,17 +146,17 @@ export function CreateCommunityPage() {
               <div>
                 <Label>{t("pages.communities.createWizard.basics.domain")}</Label>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {categories.map((c) => (
+                  {(domains.length ? domains : categories.map((c) => ({ id: c.id, label: c.name }))).map((item) => (
                     <button
-                      key={c.id}
+                      key={item.id}
                       type="button"
-                      onClick={() => { setDomain(c.id); setTopics([]) }}
+                      onClick={() => { setDomain(item.id); setTopics([]) }}
                       className={cn(
                         "rounded-md border px-3 py-2.5 text-start text-sm transition-colors",
-                        domain === c.id ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
+                        domain === item.id ? "border-primary bg-secondary/50 font-medium" : "border-border text-muted-foreground hover:border-primary/40",
                       )}
                     >
-                      {c.name}
+                      {"label" in item ? item.label : item.name}
                     </button>
                   ))}
                 </div>
@@ -223,7 +238,7 @@ export function CreateCommunityPage() {
               <h2 className="mb-5 font-heading text-lg font-bold text-foreground">{t("pages.communities.createWizard.review.title")}</h2>
               <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                 <Row label={t("pages.communities.createWizard.review.name")} value={name || emDash} />
-                <Row label={t("pages.communities.createWizard.review.domain")} value={categories.find((c) => c.id === domain)?.name ?? ""} />
+                <Row label={t("pages.communities.createWizard.review.domain")} value={(domains.find((d) => d.id === domain)?.label ?? categories.find((c) => c.id === domain)?.name) ?? ""} />
                 <Row label={t("pages.communities.createWizard.review.owner")} value={owner} />
                 <Row label={t("pages.communities.createWizard.review.objectives")} value={`${objectives.filter(Boolean).length} ${t("common.objective")}`} />
                 <Row label={t("pages.communities.createWizard.review.topics")} value={topics.length ? formatList(topics) : emDash} />

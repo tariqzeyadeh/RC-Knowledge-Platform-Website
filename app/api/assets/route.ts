@@ -2,9 +2,69 @@ import { getLocaleFromRequest, jsonResponse, errorResponse } from "@/lib/api/htt
 import { requireSession } from "@/lib/api/session"
 import { getDb } from "@/lib/db"
 import { reviewItems } from "@/lib/db/schema"
+import {
+  createAttachment,
+  linkAttachments,
+  resolveFileTypeId,
+} from "@/lib/db/repositories/attachment.repository"
 import { createAsset, listAssets, searchAssets } from "@/lib/db/repositories/asset.repository"
 import { resolveLookupIdByLabel } from "@/lib/db/repositories/lookup.repository"
 import type { AssetSort } from "@/types/domain"
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+
+type CreateAssetBody = {
+  titleAr: string
+  titleEn?: string
+  knowledgeTypeId?: string
+  knowledgeTypeLabel?: string
+  categoryId: string
+  departmentId?: string
+  departmentLabel?: string
+  confidentialityId: string
+  summaryAr: string
+  summaryEn?: string
+  fileTypeId?: string
+  keywordsAr?: string[]
+  keywordsEn?: string[]
+  nextReview?: string
+  attachmentId?: string
+}
+
+async function parseCreateAssetRequest(request: Request, userDisplayName: string) {
+  const contentType = request.headers.get("content-type") ?? ""
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData()
+    const file = formData.get("file")
+    const metadataRaw = formData.get("metadata")
+    const metadata = JSON.parse(String(metadataRaw ?? "{}")) as CreateAssetBody
+
+    let attachmentId = metadata.attachmentId
+    if (file instanceof File && file.size > 0) {
+      if (file.size > MAX_FILE_BYTES) throw new Error("file_too_large")
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const attachment = await createAttachment({
+        id: `ATT-${Date.now()}`,
+        entityType: "pending",
+        entityId: "pending",
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        fileTypeId: resolveFileTypeId(file.name),
+        sizeBytes: file.size,
+        contentBase64: buffer.toString("base64"),
+        uploadedBy: userDisplayName,
+      })
+      attachmentId = attachment?.id
+      metadata.fileTypeId = resolveFileTypeId(file.name)
+    }
+
+    return { body: metadata, attachmentId }
+  }
+
+  const body = (await request.json()) as CreateAssetBody
+  return { body, attachmentId: body.attachmentId }
+}
 
 export async function GET(request: Request) {
   const locale = getLocaleFromRequest(request)
@@ -46,20 +106,19 @@ export async function POST(request: Request) {
   if (!user) return errorResponse("unauthorized", 401)
 
   const locale = getLocaleFromRequest(request)
-  const body = (await request.json()) as {
-    titleAr: string
-    titleEn?: string
-    knowledgeTypeId?: string
-    knowledgeTypeLabel?: string
-    categoryId: string
-    departmentId?: string
-    departmentLabel?: string
-    confidentialityId: string
-    summaryAr: string
-    summaryEn?: string
-    fileTypeId?: string
-    keywordsAr?: string[]
-    keywordsEn?: string[]
+
+  let body: CreateAssetBody
+  let attachmentId: string | undefined
+  try {
+    const parsed = await parseCreateAssetRequest(request, user.displayName)
+    body = parsed.body
+    attachmentId = parsed.attachmentId
+  } catch {
+    return errorResponse("invalid_request", 400)
+  }
+
+  if (!body.titleAr?.trim() || !body.categoryId || !body.confidentialityId || !body.summaryAr?.trim()) {
+    return errorResponse("invalid_request", 400)
   }
 
   const knowledgeTypeId =
@@ -90,7 +149,7 @@ export async function POST(request: Request) {
       confidentialityId: body.confidentialityId,
       version: "1.0",
       updated: today,
-      nextReview: today,
+      nextReview: body.nextReview ?? today,
       status: "review",
       summaryAr: body.summaryAr,
       summaryEn: body.summaryEn,
@@ -100,6 +159,10 @@ export async function POST(request: Request) {
     },
     locale,
   )
+
+  if (attachmentId) {
+    await linkAttachments("knowledge_asset", id, [attachmentId])
+  }
 
   await getDb().insert(reviewItems).values({
     id: `RV-${Date.now()}`,
@@ -114,5 +177,5 @@ export async function POST(request: Request) {
     assetId: id,
   })
 
-  return jsonResponse({ asset }, { status: 201 })
+  return jsonResponse({ asset, attachmentId }, { status: 201 })
 }

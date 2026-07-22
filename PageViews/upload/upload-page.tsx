@@ -19,10 +19,13 @@ const stepKeys = ["typeAndTemplate", "uploadFile", "metadata", "classification",
 export function UploadPage() {
   const t = useT()
   const { dir } = useLocale()
-  const { categories, knowledgeTypes, confidentialityLevels } = useLocalizedData()
+  const { categories, contentTemplates, confidentialityLevels, loading, error, refresh } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [createdAssetId, setCreatedAssetId] = useState("")
+  const [templateId, setTemplateId] = useState("")
   const [type, setType] = useState("")
   const [conf, setConf] = useState("internal")
   const [cat, setCat] = useState("")
@@ -30,38 +33,76 @@ export function UploadPage() {
   const [summary, setSummary] = useState("")
   const [keywords, setKeywords] = useState("")
   const [department, setDepartment] = useState("")
+  const [nextReview, setNextReview] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   useEffect(() => {
-    if (!type && knowledgeTypes[0]) setType(knowledgeTypes[0])
+    if (!templateId && contentTemplates[0]) {
+      setTemplateId(contentTemplates[0].id)
+      setType(contentTemplates[0].knowledgeType)
+    }
     if (!cat && categories[0]?.id) setCat(categories[0].id)
-  }, [type, cat, knowledgeTypes, categories])
+  }, [templateId, cat, contentTemplates, categories])
+
+  const selectedTemplate = contentTemplates.find((item) => item.id === templateId)
 
   async function handleSubmit() {
     if (!title.trim() || !summary.trim()) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
+      const metadata = {
+        titleAr: title.trim(),
+        knowledgeTypeId: selectedTemplate?.knowledgeTypeId,
+        knowledgeTypeLabel: type,
+        categoryId: cat,
+        confidentialityId: conf,
+        summaryAr: summary.trim(),
+        departmentLabel: department.trim() || undefined,
+        keywordsAr: keywords
+          .split(",")
+          .map((keyword) => keyword.trim())
+          .filter(Boolean),
+        nextReview: nextReview || undefined,
+      }
+
+      const formData = new FormData()
+      formData.append("metadata", JSON.stringify(metadata))
+      if (selectedFile) formData.append("file", selectedFile)
+
       const response = await fetch("/api/assets", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titleAr: title.trim(),
-          knowledgeTypeLabel: type,
-          categoryId: cat,
-          confidentialityId: conf,
-          summaryAr: summary.trim(),
-          departmentLabel: department.trim() || undefined,
-          keywordsAr: keywords
-            .split(",")
-            .map((keyword) => keyword.trim())
-            .filter(Boolean),
-          fileTypeId: "pdf",
-        }),
+        body: formData,
       })
       if (!response.ok) throw new Error("upload_failed")
+      const payload = (await response.json()) as { asset: { id: string } }
+      setCreatedAssetId(payload.asset.id)
+      await refresh()
       setDone(true)
     } catch {
+      setSubmitError(t("common.noResults"))
       setSubmitting(false)
     }
+  }
+
+  function resetForm() {
+    setDone(false)
+    setStep(1)
+    setSubmitting(false)
+    setSubmitError(null)
+    setCreatedAssetId("")
+    setTitle("")
+    setSummary("")
+    setKeywords("")
+    setDepartment("")
+    setNextReview("")
+    setSelectedFile(null)
+    if (contentTemplates[0]) {
+      setTemplateId(contentTemplates[0].id)
+      setType(contentTemplates[0].knowledgeType)
+    }
+    if (categories[0]) setCat(categories[0].id)
+    setConf("internal")
   }
 
   if (done) {
@@ -77,7 +118,8 @@ export function UploadPage() {
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <ButtonLink href="/review">{t("pages.upload.success.reviewQueue")}</ButtonLink>
-            <Button variant="outline" onClick={() => { setDone(false); setStep(1) }}>{t("common.submitAnother")}</Button>
+            {createdAssetId ? <ButtonLink href={`/knowledge/${createdAssetId}`}>{t("common.details")}</ButtonLink> : null}
+            <Button variant="outline" onClick={resetForm}>{t("common.submitAnother")}</Button>
           </div>
         </div>
       </AppShell>
@@ -119,18 +161,51 @@ export function UploadPage() {
             <div>
               <h2 className="mb-1 font-heading text-lg font-bold text-foreground">{t("pages.upload.step1.title")}</h2>
               <p className="mb-5 text-sm text-muted-foreground">{t("pages.upload.step1.description")}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {knowledgeTypes.map((kt) => (
-                  <button key={kt} onClick={() => setType(kt)}
-                    className={cn("flex items-center gap-3 rounded-lg border p-4 text-start transition-colors",
-                      type === kt ? "border-primary bg-secondary/50" : "border-border hover:border-primary/40")}>
-                    <span className={cn("flex h-9 w-9 items-center justify-center rounded-md", type === kt ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground")}>
-                      <FileText className="h-4 w-4" />
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{kt}</span>
-                  </button>
-                ))}
-              </div>
+              {loading ? (
+                <div className="rounded-lg border border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+                  {t("common.loading")}
+                </div>
+              ) : error || contentTemplates.length === 0 ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center text-sm text-destructive">
+                  {t("common.noResults")}
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {contentTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => {
+                        setTemplateId(template.id)
+                        setType(template.knowledgeType)
+                      }}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border p-4 text-start transition-colors",
+                        templateId === template.id
+                          ? "border-primary bg-secondary/50"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
+                          templateId === template.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground",
+                        )}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-foreground">{template.name}</span>
+                        <span className="mt-1 block text-xs text-primary">{template.knowledgeType}</span>
+                        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                          {template.description}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -142,16 +217,25 @@ export function UploadPage() {
                 <UploadCloud className="h-10 w-10 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">{t("pages.upload.step2.dragDrop")}</span>
                 <span className="text-xs text-muted-foreground">{t("pages.upload.step2.bulkHint")}</span>
-                <input type="file" className="hidden" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                />
               </label>
-              <div className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                <FileText className="h-5 w-5 text-primary" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{t("pages.upload.sampleFile")}</p>
-                  <p className="text-xs text-muted-foreground">2.4 MB · {t("pages.upload.step2.indexed")}</p>
+              {selectedFile ? (
+                <div className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB · {t("pages.upload.step2.indexed")}
+                    </p>
+                  </div>
+                  <Check className="h-5 w-5 text-primary" />
                 </div>
-                <Check className="h-5 w-5 text-primary" />
-              </div>
+              ) : null}
             </div>
           )}
 
@@ -180,7 +264,7 @@ export function UploadPage() {
                 </div>
                 <div>
                   <Label htmlFor="review">{t("pages.upload.step3.nextReview")}</Label>
-                  <Input id="review" type="date" className="mt-1.5" />
+                  <Input id="review" type="date" className="mt-1.5" value={nextReview} onChange={(e) => setNextReview(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -220,8 +304,8 @@ export function UploadPage() {
               <h2 className="mb-1 font-heading text-lg font-bold text-foreground">{t("pages.upload.step5.title")}</h2>
               <p className="mb-5 text-sm text-muted-foreground">{t("pages.upload.step5.description")}</p>
               <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-                <Row label={t("pages.upload.review.contentType")} value={type} />
-                <Row label={t("pages.upload.review.file")} value={t("pages.upload.sampleFileReview")} />
+                <Row label={t("pages.upload.review.contentType")} value={selectedTemplate?.name ?? type} />
+                <Row label={t("pages.upload.review.file")} value={selectedFile ? `${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)` : t("common.emDash")} />
                 <Row label={t("pages.upload.review.classification")} value={categories.find((c) => c.id === cat)?.name ?? ""} />
                 <Row label={t("pages.upload.review.confidentiality")} value={confidentialityLevels.find((l) => l.id === conf)?.name ?? ""} />
                 <Row label={t("pages.upload.review.destination")} value={t("pages.upload.review.destinationValue")} />
@@ -231,6 +315,10 @@ export function UploadPage() {
               </div>
             </div>
           )}
+
+          {submitError ? (
+            <p className="mt-4 text-sm text-destructive">{submitError}</p>
+          ) : null}
 
           <div className="mt-8 flex items-center justify-between border-t border-border pt-5">
             <Button variant="ghost" disabled={step === 1} onClick={() => setStep((s) => s - 1)}>

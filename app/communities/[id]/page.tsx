@@ -1,1 +1,1 @@
-export { CommunityDetailPage as default, generateStaticParams } from "@/pages/communities/community-detail-page"
+export { CommunityDetailPage as default } from "@/pages/communities/community-detail-page"

@@ -7,6 +7,7 @@ import {
   Target, FileText, Clock,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { needPriorityKey, needStatusKey } from "@/i18n/enum-maps"
@@ -54,6 +55,7 @@ export function NeedDetailView({ id }: { id: string }) {
         { label: need.id },
       ]}
     >
+      <DemoDataGate>
       <Link href="/needs" className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} /> {t("common.backToNeeds")}
       </Link>
@@ -155,6 +157,7 @@ export function NeedDetailView({ id }: { id: string }) {
           </Card>
         </aside>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

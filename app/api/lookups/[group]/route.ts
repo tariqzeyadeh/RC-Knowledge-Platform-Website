@@ -18,6 +18,7 @@ const ALLOWED_GROUPS = new Set([
   "need_priority",
   "need_status",
   "need_unit",
+  "content_template",
   "audit_result",
   "compliance_status",
   "popular_search",

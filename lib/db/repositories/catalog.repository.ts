@@ -1,4 +1,4 @@
-import { asc, desc } from "drizzle-orm"
+import { asc, desc, eq } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import {
   auditLogEntries,

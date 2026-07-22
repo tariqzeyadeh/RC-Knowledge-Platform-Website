@@ -90,6 +90,19 @@ export const assetVersions = sqliteTable("asset_versions", {
   note: text("note").notNull(),
 })
 
+export const attachments = sqliteTable("attachments", {
+  id: text("id").primaryKey(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileTypeId: text("file_type_id"),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentBase64: text("content_base64").notNull(),
+  uploadedBy: text("uploaded_by").notNull(),
+  createdAt: text("created_at").notNull(),
+})
+
 export const workflowStages = sqliteTable("workflow_stages", {
   id: text("id").primaryKey(),
   label: text("label").notNull(),

@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { ListChecks, ChevronUp, Building2, User2, Plus } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { needPriorityKey, needStatusKey } from "@/i18n/enum-maps"
@@ -23,8 +25,24 @@ const priorityStyleByKey: Record<string, string> = {
 export function NeedsPage() {
   const t = useT()
   const { formatNumber } = useLocale()
-  const { needs } = useLocalizedData()
+  const { needs, refresh } = useLocalizedData()
+  const [votingId, setVotingId] = useState<string | null>(null)
   const sorted = [...needs].sort((a, b) => b.votes - a.votes)
+
+  async function handleVote(id: string) {
+    setVotingId(id)
+    try {
+      const response = await fetch(`/api/needs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "vote" }),
+      })
+      if (!response.ok) return
+      await refresh()
+    } finally {
+      setVotingId(null)
+    }
+  }
 
   return (
     <AppShell
@@ -33,14 +51,17 @@ export function NeedsPage() {
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.needs.title") }]}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <DemoDataGate>
         <div className="flex gap-3">
           <Stat label={t("pages.needs.newRequests")} value={needs.filter((n) => needStatusKey[n.status] === "new").length} formatNumber={formatNumber} />
           <Stat label={t("pages.needs.inProduction")} value={needs.filter((n) => needStatusKey[n.status] === "inProduction").length} formatNumber={formatNumber} />
           <Stat label={t("pages.needs.published")} value={needs.filter((n) => needStatusKey[n.status] === "published").length} formatNumber={formatNumber} />
         </div>
+        </DemoDataGate>
         <ButtonLink href="/needs/create"><Plus className="h-4 w-4" /> {t("pages.needs.create")}</ButtonLink>
       </div>
 
+      <DemoDataGate>
       <div className="space-y-3">
         {sorted.map((n) => {
           const statusKey = needStatusKey[n.status] ?? "new"
@@ -49,8 +70,9 @@ export function NeedsPage() {
             <Link key={n.id} href={`/needs/${n.id}`} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40">
               <button
                 type="button"
-                onClick={(e) => e.preventDefault()}
-                className="flex w-14 shrink-0 flex-col items-center rounded-md border border-border bg-muted/40 py-2 transition-colors hover:border-primary/40"
+                disabled={votingId === n.id}
+                onClick={(e) => { e.preventDefault(); void handleVote(n.id) }}
+                className="flex w-14 shrink-0 flex-col items-center rounded-md border border-border bg-muted/40 py-2 transition-colors hover:border-primary/40 disabled:opacity-50"
               >
                 <ChevronUp className="h-4 w-4 text-primary" />
                 <span className="font-heading text-sm font-bold text-foreground">{n.votes}</span>
@@ -79,6 +101,7 @@ export function NeedsPage() {
           )
         })}
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

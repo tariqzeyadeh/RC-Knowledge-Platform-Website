@@ -16,8 +16,7 @@ import {
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
 import {
-  countRoutingRulesForWorkflow,
-  getWorkflowMetrics,
+  // countRoutingRulesForWorkflow, // STATIC_DEMO_DATA: fixture routing rules
   summarizeWorkflows,
 } from "@/services/admin/workflow.service"
 import {
@@ -27,6 +26,7 @@ import {
   REQUIRED_STAGE_IDS,
   WorkflowStageManager,
 } from "@/pages/admin/workflow-stage-manager"
+import { DemoDataGate } from "@/components/shared"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -120,7 +120,8 @@ function PipelinePreview({
 export function WorkflowPage() {
   const t = useT()
   const { formatNumber } = useLocale()
-  const metrics = getWorkflowMetrics()
+  // STATIC_DEMO_DATA: fixture workflow metrics — restore getWorkflowMetrics() when re-enabling demo data
+  const metrics = { draft: 0, review: 0, approval: 0, publish: 0, avgCycleDays: 0, rejected: 0 }
 
   const [stageConfig, setStageConfig] = useState<WorkflowStage[]>([])
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
@@ -287,7 +288,7 @@ export function WorkflowPage() {
     deleting &&
     (workflows.length === 1
       ? "lastWorkflow"
-      : countRoutingRulesForWorkflow(deleting.id) > 0
+      : routingRules.filter((rule) => rule.workflowId === deleting.id).length > 0
         ? "hasRules"
         : null)
 
@@ -511,6 +512,7 @@ export function WorkflowPage() {
         </Card>
       )}
 
+      <DemoDataGate>
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {metricCards.map((item) => (
           <Card key={item.key}>
@@ -548,6 +550,7 @@ export function WorkflowPage() {
           </CardContent>
         </Card>
       </div>
+      </DemoDataGate>
 
       <WorkflowStageManager
         stages={stageConfig}

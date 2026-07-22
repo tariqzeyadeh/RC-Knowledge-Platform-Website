@@ -7,6 +7,7 @@ import {
   Users, ListChecks, HelpCircle, FileText, CheckCircle2, FileEdit,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { outputStatusKey, transferStatusKey } from "@/i18n/enum-maps"
@@ -53,6 +54,7 @@ export function TransferDetailView({ id }: { id: string }) {
         { label: session.id },
       ]}
     >
+      <DemoDataGate>
       <div className="mb-6">
         <Link href="/transfer" className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} /> {t("common.backToSessions")}
@@ -225,6 +227,7 @@ export function TransferDetailView({ id }: { id: string }) {
           </div>
         </aside>
       </div>
+      </DemoDataGate>
     </AppShell>
   )
 }

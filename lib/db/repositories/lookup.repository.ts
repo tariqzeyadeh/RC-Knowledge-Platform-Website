@@ -82,6 +82,52 @@ export async function listKnowledgeTypeLabels(locale: Locale) {
   return items.map((item) => item.label)
 }
 
+export type ContentTemplate = {
+  id: string
+  name: string
+  description: string
+  knowledgeTypeId: string
+  knowledgeType: string
+}
+
+export async function listContentTemplates(locale: Locale = "ar"): Promise<ContentTemplate[]> {
+  const items = await listLookups("content_template", locale)
+
+  return Promise.all(
+    items.map(async (item) => {
+      const knowledgeTypeId = String(item.metadata?.knowledgeTypeId ?? "")
+      return {
+        id: item.id,
+        name: item.label,
+        description: item.description ?? "",
+        knowledgeTypeId,
+        knowledgeType: knowledgeTypeId
+          ? await getLookupLabel("knowledge_type", knowledgeTypeId, locale)
+          : "",
+      }
+    }),
+  )
+}
+
+export type TransferSessionTypeOption = {
+  id: string
+  label: string
+  desc: string
+}
+
+export async function listTransferSessionTypeOptions(locale: Locale = "ar"): Promise<TransferSessionTypeOption[]> {
+  const items = await listLookups("transfer_session_type", locale)
+
+  return items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    desc:
+      locale === "en"
+        ? String(item.metadata?.descEn ?? item.description ?? "")
+        : String(item.metadata?.descAr ?? item.description ?? ""),
+  }))
+}
+
 export async function listConfidentialityLevels(locale: Locale) {
   const items = await listLookups("confidentiality", locale)
   return items.map((item) => ({

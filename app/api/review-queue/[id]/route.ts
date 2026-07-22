@@ -1,13 +1,10 @@
+import { eq } from "drizzle-orm"
 import { getLocaleFromRequest, jsonResponse, errorResponse } from "@/lib/api/http"
 import { requireSession } from "@/lib/api/session"
-import { listReviewQueue, updateReviewStage } from "@/lib/db/repositories/collaboration.repository"
+import { getDb } from "@/lib/db"
+import { reviewItems } from "@/lib/db/schema"
 import { updateAsset } from "@/lib/db/repositories/asset.repository"
-
-export async function GET(request: Request) {
-  const locale = getLocaleFromRequest(request)
-  const items = await listReviewQueue(locale)
-  return jsonResponse({ items })
-}
+import { updateReviewStage } from "@/lib/db/repositories/collaboration.repository"
 
 export async function POST(
   request: Request,
@@ -18,16 +15,23 @@ export async function POST(
 
   const { id } = await params
   const locale = getLocaleFromRequest(request)
-  const body = (await request.json()) as { action: "approve" | "return"; assetId?: string }
+  const body = (await request.json()) as { action: "approve" | "return" }
+
+  const db = getDb()
+  const row = await db.select().from(reviewItems).where(eq(reviewItems.id, id)).get()
+  if (!row) return errorResponse("not_found", 404)
 
   if (body.action === "approve") {
     const item = await updateReviewStage(id, "rs-approval", locale)
-    if (body.assetId) {
-      await updateAsset(body.assetId, { status: "published" }, locale)
+    if (row.assetId) {
+      await updateAsset(row.assetId, { status: "published" }, locale)
     }
     return jsonResponse({ item })
   }
 
   const item = await updateReviewStage(id, "rs-draft", locale)
+  if (row.assetId) {
+    await updateAsset(row.assetId, { status: "draft" }, locale)
+  }
   return jsonResponse({ item })
 }

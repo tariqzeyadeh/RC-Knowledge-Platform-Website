@@ -1,1 +1,1 @@
-export { NeedDetailPage as default, generateStaticParams } from "@/pages/needs/need-detail-page"
+export { NeedDetailPage as default } from "@/pages/needs/need-detail-page"
