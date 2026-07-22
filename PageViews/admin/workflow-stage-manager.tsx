@@ -181,21 +181,43 @@ export function WorkflowStageManager({ stages, workflows, onChange }: WorkflowSt
       actions: form.actions.length > 0 ? form.actions : ["comment"],
     }
 
-    if (formMode === "create") {
-      onChange([...stages, saved].sort((a, b) => a.order - b.order))
-    } else {
-      onChange(stages.map((stage) => (stage.id === saved.id ? saved : stage)))
-    }
+    const request =
+      formMode === "create"
+        ? fetch("/api/admin/workflow-stages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
+        : fetch(`/api/admin/workflow-stages/${saved.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
 
-    if (viewing?.id === saved.id) setViewing(saved)
-    closeForm()
+    request
+      .then(async (response) => {
+        if (!response.ok) throw new Error("save_failed")
+        if (formMode === "create") {
+          onChange([...stages, saved].sort((a, b) => a.order - b.order))
+        } else {
+          onChange(stages.map((stage) => (stage.id === saved.id ? saved : stage)))
+        }
+        if (viewing?.id === saved.id) setViewing(saved)
+        closeForm()
+      })
+      .catch(() => undefined)
   }
 
   function confirmDelete() {
     if (!deleting) return
-    onChange(stages.filter((stage) => stage.id !== deleting.id))
-    if (viewing?.id === deleting.id) setViewing(null)
-    setDeleting(null)
+    fetch(`/api/admin/workflow-stages/${deleting.id}`, { method: "DELETE" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("delete_failed")
+        onChange(stages.filter((stage) => stage.id !== deleting.id))
+        if (viewing?.id === deleting.id) setViewing(null)
+        setDeleting(null)
+      })
+      .catch(() => undefined)
   }
 
   const deleteBlocked =

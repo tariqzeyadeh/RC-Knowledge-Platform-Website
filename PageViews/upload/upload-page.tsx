@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Check, UploadCloud, FileText, Tag, ShieldCheck, ClipboardCheck, ArrowLeft, ArrowRight,
   Sparkles, CheckCircle2,
@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/utils"
 
 const stepKeys = ["typeAndTemplate", "uploadFile", "metadata", "classification", "reviewSubmit"] as const
-const stepIcons = [FileText, UploadCloud, Tag, ShieldCheck, ClipboardCheck]
 
 export function UploadPage() {
   const t = useT()
@@ -23,9 +22,47 @@ export function UploadPage() {
   const { categories, knowledgeTypes, confidentialityLevels } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
-  const [type, setType] = useState(knowledgeTypes[0])
+  const [submitting, setSubmitting] = useState(false)
+  const [type, setType] = useState("")
   const [conf, setConf] = useState("internal")
-  const [cat, setCat] = useState(categories[0]?.id ?? "")
+  const [cat, setCat] = useState("")
+  const [title, setTitle] = useState("")
+  const [summary, setSummary] = useState("")
+  const [keywords, setKeywords] = useState("")
+  const [department, setDepartment] = useState("")
+
+  useEffect(() => {
+    if (!type && knowledgeTypes[0]) setType(knowledgeTypes[0])
+    if (!cat && categories[0]?.id) setCat(categories[0].id)
+  }, [type, cat, knowledgeTypes, categories])
+
+  async function handleSubmit() {
+    if (!title.trim() || !summary.trim()) return
+    setSubmitting(true)
+    try {
+      const response = await fetch("/api/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titleAr: title.trim(),
+          knowledgeTypeLabel: type,
+          categoryId: cat,
+          confidentialityId: conf,
+          summaryAr: summary.trim(),
+          departmentLabel: department.trim() || undefined,
+          keywordsAr: keywords
+            .split(",")
+            .map((keyword) => keyword.trim())
+            .filter(Boolean),
+          fileTypeId: "pdf",
+        }),
+      })
+      if (!response.ok) throw new Error("upload_failed")
+      setDone(true)
+    } catch {
+      setSubmitting(false)
+    }
+  }
 
   if (done) {
     return (
@@ -123,15 +160,15 @@ export function UploadPage() {
               <h2 className="font-heading text-lg font-bold text-foreground">{t("pages.upload.step3.title")}</h2>
               <div>
                 <Label htmlFor="title">{t("pages.upload.step3.contentTitle")}</Label>
-                <Input id="title" className="mt-1.5" placeholder={t("pages.upload.step3.contentTitlePlaceholder")} />
+                <Input id="title" className="mt-1.5" placeholder={t("pages.upload.step3.contentTitlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="summary">{t("pages.upload.step3.summary")}</Label>
-                <Textarea id="summary" className="mt-1.5" rows={3} placeholder={t("pages.upload.step3.summaryPlaceholder")} />
+                <Textarea id="summary" className="mt-1.5" rows={3} placeholder={t("pages.upload.step3.summaryPlaceholder")} value={summary} onChange={(e) => setSummary(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="kw">{t("pages.upload.step3.keywords")}</Label>
-                <Input id="kw" className="mt-1.5" placeholder={t("pages.upload.step3.keywordsPlaceholder")} />
+                <Input id="kw" className="mt-1.5" placeholder={t("pages.upload.step3.keywordsPlaceholder")} value={keywords} onChange={(e) => setKeywords(e.target.value)} />
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
                   <Sparkles className="h-3.5 w-3.5" /> {t("pages.upload.step3.aiSuggest")}
                 </p>
@@ -139,7 +176,7 @@ export function UploadPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="dept">{t("pages.upload.step3.department")}</Label>
-                  <Input id="dept" className="mt-1.5" placeholder={t("pages.upload.step3.departmentPlaceholder")} />
+                  <Input id="dept" className="mt-1.5" placeholder={t("pages.upload.step3.departmentPlaceholder")} value={department} onChange={(e) => setDepartment(e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="review">{t("pages.upload.step3.nextReview")}</Label>
@@ -202,7 +239,9 @@ export function UploadPage() {
             {step < 5 ? (
               <Button onClick={() => setStep((s) => s + 1)}>{t("common.next")} <ArrowLeft className={cn("h-4 w-4", dir === "ltr" && "rotate-180")} /></Button>
             ) : (
-              <Button onClick={() => setDone(true)}><ClipboardCheck className="h-4 w-4" /> {t("pages.upload.submitReview")}</Button>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                <ClipboardCheck className="h-4 w-4" /> {t("pages.upload.submitReview")}
+              </Button>
             )}
           </div>
         </div>

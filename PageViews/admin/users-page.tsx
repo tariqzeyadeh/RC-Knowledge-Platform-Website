@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Search, Trash2, UserCog, Users } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
-import { listPlatformUsers, summarizeUsersByRole } from "@/services/admin/user-management.service"
+import { summarizeUsersByRole } from "@/services/admin/user-management.service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -35,11 +35,23 @@ const STATUSES: PlatformUserStatus[] = ["active", "inactive"]
 export function UsersPage() {
   const t = useT()
   const { formatNumber } = useLocale()
-  const [users, setUsers] = useState<PlatformUser[]>(() => listPlatformUsers())
+  const [users, setUsers] = useState<PlatformUser[]>([])
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState("")
   const [editingUser, setEditingUser] = useState<PlatformUser | null>(null)
   const [editForm, setEditForm] = useState<PlatformUser | null>(null)
   const [deletingUser, setDeletingUser] = useState<PlatformUser | null>(null)
+
+  useEffect(() => {
+    fetch("/api/admin/users", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("users_failed")
+        return response.json() as Promise<{ users: PlatformUser[] }>
+      })
+      .then((payload) => setUsers(payload.users))
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -68,14 +80,36 @@ export function UsersPage() {
 
   function saveEdit() {
     if (!editForm) return
-    setUsers((prev) => prev.map((user) => (user.id === editForm.id ? editForm : user)))
-    closeEdit()
+    fetch(`/api/admin/users/${editForm.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: editForm.displayName,
+        role: editForm.role,
+        status: editForm.status,
+        email: editForm.email,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("save_failed")
+        return response.json() as Promise<{ user: PlatformUser }>
+      })
+      .then((payload) => {
+        setUsers((prev) => prev.map((user) => (user.id === payload.user.id ? payload.user : user)))
+        closeEdit()
+      })
+      .catch(() => undefined)
   }
 
   function confirmDelete() {
     if (!deletingUser) return
-    setUsers((prev) => prev.filter((user) => user.id !== deletingUser.id))
-    setDeletingUser(null)
+    fetch(`/api/admin/users/${deletingUser.id}`, { method: "DELETE" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("delete_failed")
+        setUsers((prev) => prev.filter((user) => user.id !== deletingUser.id))
+        setDeletingUser(null)
+      })
+      .catch(() => undefined)
   }
 
   function updateForm<K extends keyof PlatformUser>(key: K, value: PlatformUser[K]) {

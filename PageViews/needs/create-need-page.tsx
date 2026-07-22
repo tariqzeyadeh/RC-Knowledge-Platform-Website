@@ -28,7 +28,31 @@ export function CreateNeedPage() {
   const [justification, setJustification] = useState("")
   const [expectedOutcome, setExpectedOutcome] = useState("")
   const [priority, setPriority] = useState<(typeof priorityKeys)[number]>("medium")
+  const [submitting, setSubmitting] = useState(false)
   const emDash = t("common.emDash")
+
+  async function handleSubmit() {
+    if (!title.trim() || !description.trim() || !justification.trim() || !expectedOutcome.trim()) return
+    setSubmitting(true)
+    try {
+      const response = await fetch("/api/needs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          unitId: `nu-${unit}`,
+          priorityId: `np-${priority}`,
+          description: description.trim(),
+          justification: justification.trim(),
+          expectedOutcome: expectedOutcome.trim(),
+        }),
+      })
+      if (!response.ok) throw new Error("create_need_failed")
+      setDone(true)
+    } catch {
+      setSubmitting(false)
+    }
+  }
 
   if (done) {
     return (
@@ -177,7 +201,9 @@ export function CreateNeedPage() {
             {step < 3 ? (
               <Button onClick={() => setStep((s) => s + 1)}>{t("common.next")} <ArrowLeft className={cn("h-4 w-4", dir === "ltr" && "rotate-180")} /></Button>
             ) : (
-              <Button onClick={() => setDone(true)}><ClipboardCheck className="h-4 w-4" /> {t("common.submitNeed")}</Button>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                <ClipboardCheck className="h-4 w-4" /> {t("common.submitNeed")}
+              </Button>
             )}
           </div>
         </div>

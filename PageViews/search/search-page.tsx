@@ -7,7 +7,6 @@ import { ConfidentialityBadge } from "@/components/shared"
 import { useAssetSearch } from "@/hooks/use-asset-search"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
-import { listSearchDepartments, listSearchFileTypes } from "@/services/knowledge/asset-search.service"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,10 +20,8 @@ import { cn } from "@/utils"
 
 export function SearchPage() {
   const t = useT()
-  const { formatNumber, locale } = useLocale()
-  const { categories, knowledgeTypes, topSearches, searchSuggestions } = useLocalizedData()
-  const departments = listSearchDepartments(locale)
-  const fileTypes = listSearchFileTypes(locale)
+  const { formatNumber } = useLocale()
+  const { categories, knowledgeTypes, topSearches, searchSuggestions, departments, fileTypes } = useLocalizedData()
   const {
     query, setQuery, sort, setSort, results,
     categoryId, setCategoryId, type, setType,

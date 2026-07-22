@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowLeft,
   Eye,
@@ -18,9 +18,6 @@ import { useLocale, useT } from "@/hooks/use-locale"
 import {
   countRoutingRulesForWorkflow,
   getWorkflowMetrics,
-  getWorkflowRoutingRules,
-  getWorkflowStages,
-  listWorkflowDefinitions,
   summarizeWorkflows,
 } from "@/services/admin/workflow.service"
 import {
@@ -125,15 +122,32 @@ export function WorkflowPage() {
   const { formatNumber } = useLocale()
   const metrics = getWorkflowMetrics()
 
-  const [stageConfig, setStageConfig] = useState<WorkflowStage[]>(() => getWorkflowStages())
-  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(() => listWorkflowDefinitions())
-  const [routingRules] = useState<WorkflowRoutingRule[]>(() => getWorkflowRoutingRules())
+  const [stageConfig, setStageConfig] = useState<WorkflowStage[]>([])
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
+  const [routingRules, setRoutingRules] = useState<WorkflowRoutingRule[]>([])
   const [query, setQuery] = useState("")
   const [viewing, setViewing] = useState<WorkflowDefinition | null>(null)
   const [formMode, setFormMode] = useState<FormMode>("create")
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<WorkflowDefinition | null>(null)
   const [deleting, setDeleting] = useState<WorkflowDefinition | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/admin/workflow-stages", { cache: "no-store" }),
+      fetch("/api/admin/workflows", { cache: "no-store" }),
+      fetch("/api/admin/workflow-routing-rules", { cache: "no-store" }),
+    ])
+      .then(async ([stagesRes, workflowsRes, rulesRes]) => {
+        const stagesPayload = (await stagesRes.json()) as { stages: WorkflowStage[] }
+        const workflowsPayload = (await workflowsRes.json()) as { workflows: WorkflowDefinition[] }
+        const rulesPayload = (await rulesRes.json()) as { rules: WorkflowRoutingRule[] }
+        setStageConfig(stagesPayload.stages ?? [])
+        setWorkflows(workflowsPayload.workflows ?? [])
+        setRoutingRules(rulesPayload.rules ?? [])
+      })
+      .catch(() => undefined)
+  }, [])
 
   const stats = summarizeWorkflows(workflows)
 
@@ -207,33 +221,62 @@ export function WorkflowPage() {
       stages: normalizeWorkflowStages(form.stages, stageConfig),
     }
 
-    if (saved.default) {
-      setWorkflows((prev) => {
-        const updated = prev.map((item) =>
-          item.id === saved.id ? saved : { ...item, default: false },
-        )
-        return formMode === "create" ? [saved, ...updated.filter((w) => w.id !== saved.id)] : updated
+    const request =
+      formMode === "create"
+        ? fetch("/api/admin/workflows", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
+        : fetch(`/api/admin/workflows/${saved.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
+
+    request
+      .then(async (response) => {
+        if (!response.ok) throw new Error("save_failed")
+        return response.json() as Promise<{ workflow: WorkflowDefinition }>
       })
-    } else if (formMode === "create") {
-      setWorkflows((prev) => [saved, ...prev])
-    } else {
-      setWorkflows((prev) => prev.map((item) => (item.id === saved.id ? saved : item)))
-    }
-    if (viewing?.id === saved.id) setViewing(saved)
-    closeForm()
+      .then((payload) => {
+        const workflow = payload.workflow
+        if (workflow.default) {
+          setWorkflows((prev) => {
+            const updated = prev.map((item) =>
+              item.id === workflow.id ? workflow : { ...item, default: false },
+            )
+            return formMode === "create"
+              ? [workflow, ...updated.filter((w) => w.id !== workflow.id)]
+              : updated
+          })
+        } else if (formMode === "create") {
+          setWorkflows((prev) => [workflow, ...prev])
+        } else {
+          setWorkflows((prev) => prev.map((item) => (item.id === workflow.id ? workflow : item)))
+        }
+        if (viewing?.id === workflow.id) setViewing(workflow)
+        closeForm()
+      })
+      .catch(() => undefined)
   }
 
   function confirmDelete() {
     if (!deleting) return
-    setWorkflows((prev) => {
-      const next = prev.filter((item) => item.id !== deleting.id)
-      if (next.length > 0 && !next.some((w) => w.default)) {
-        next[0] = { ...next[0], default: true }
-      }
-      return next
-    })
-    setDeleting(null)
-    if (viewing?.id === deleting.id) setViewing(null)
+    fetch(`/api/admin/workflows/${deleting.id}`, { method: "DELETE" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("delete_failed")
+        setWorkflows((prev) => {
+          const next = prev.filter((item) => item.id !== deleting.id)
+          if (next.length > 0 && !next.some((w) => w.default)) {
+            next[0] = { ...next[0], default: true }
+          }
+          return next
+        })
+        setDeleting(null)
+        if (viewing?.id === deleting.id) setViewing(null)
+      })
+      .catch(() => undefined)
   }
 
   function workflowName(workflowId: string) {

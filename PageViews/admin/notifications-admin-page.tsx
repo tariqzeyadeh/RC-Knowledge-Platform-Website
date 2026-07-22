@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Bell,
   BellRing,
@@ -17,7 +17,6 @@ import { useLocale, useT } from "@/hooks/use-locale"
 import {
   filterByKind,
   filterByStatus,
-  listBroadcastMessages,
   summarizeBroadcasts,
 } from "@/services/admin/broadcast-management.service"
 import { Button } from "@/components/ui/button"
@@ -100,7 +99,7 @@ const statusStyles: Record<BroadcastStatus, string> = {
 export function NotificationsAdminPage() {
   const t = useT()
   const { formatNumber } = useLocale()
-  const [messages, setMessages] = useState<BroadcastMessage[]>(() => listBroadcastMessages())
+  const [messages, setMessages] = useState<BroadcastMessage[]>([])
   const [query, setQuery] = useState("")
   const [kindFilter, setKindFilter] = useState<KindFilter>("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
@@ -108,6 +107,16 @@ export function NotificationsAdminPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<BroadcastMessage | null>(null)
   const [deleting, setDeleting] = useState<BroadcastMessage | null>(null)
+
+  useEffect(() => {
+    fetch("/api/admin/broadcasts", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("broadcasts_failed")
+        return response.json() as Promise<{ messages: BroadcastMessage[] }>
+      })
+      .then((payload) => setMessages(payload.messages))
+      .catch(() => setMessages([]))
+  }, [])
 
   const stats = summarizeBroadcasts(messages)
 
@@ -162,18 +171,41 @@ export function NotificationsAdminPage() {
           : form.publishedAt,
     }
 
-    if (formMode === "create") {
-      setMessages((prev) => [saved, ...prev])
-    } else {
-      setMessages((prev) => prev.map((item) => (item.id === saved.id ? saved : item)))
-    }
-    closeForm()
+    const request =
+      formMode === "create"
+        ? fetch("/api/admin/broadcasts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
+        : fetch(`/api/admin/broadcasts/${saved.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saved),
+          })
+
+    request
+      .then(async (response) => {
+        if (!response.ok) throw new Error("save_failed")
+        if (formMode === "create") {
+          setMessages((prev) => [saved, ...prev])
+        } else {
+          setMessages((prev) => prev.map((item) => (item.id === saved.id ? saved : item)))
+        }
+        closeForm()
+      })
+      .catch(() => undefined)
   }
 
   function confirmDelete() {
     if (!deleting) return
-    setMessages((prev) => prev.filter((item) => item.id !== deleting.id))
-    setDeleting(null)
+    fetch(`/api/admin/broadcasts/${deleting.id}`, { method: "DELETE" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("delete_failed")
+        setMessages((prev) => prev.filter((item) => item.id !== deleting.id))
+        setDeleting(null)
+      })
+      .catch(() => undefined)
   }
 
   return (

@@ -30,9 +30,35 @@ export function CreateCommunityPage() {
   const [topics, setTopics] = useState<string[]>([])
   const [charter, setCharter] = useState("")
   const [moderators, setModerators] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
   const topicOptions = categories.find((c) => c.id === domain)?.topics ?? []
   const emDash = t("common.emDash")
+
+  async function handleSubmit() {
+    if (!name.trim() || !desc.trim()) return
+    setSubmitting(true)
+    try {
+      const response = await fetch("/api/communities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          domainId: domain,
+          description: desc.trim(),
+          owner: owner.trim(),
+          objectives: objectives.filter(Boolean),
+          topics,
+          charter: charter.trim(),
+          moderators: moderators.trim(),
+        }),
+      })
+      if (!response.ok) throw new Error("create_community_failed")
+      setDone(true)
+    } catch {
+      setSubmitting(false)
+    }
+  }
 
   if (done) {
     return (
@@ -215,7 +241,9 @@ export function CreateCommunityPage() {
             {step < 4 ? (
               <Button onClick={() => setStep((s) => s + 1)}>{t("common.next")} <ArrowLeft className={cn("h-4 w-4", dir === "ltr" && "rotate-180")} /></Button>
             ) : (
-              <Button onClick={() => setDone(true)}><ClipboardCheck className="h-4 w-4" /> {t("common.sendForReview")}</Button>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                <ClipboardCheck className="h-4 w-4" /> {t("common.sendForReview")}
+              </Button>
             )}
           </div>
         </div>

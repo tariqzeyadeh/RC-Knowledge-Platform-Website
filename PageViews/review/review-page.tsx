@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ClipboardCheck, Check, X, Clock, User2, Building2, ArrowLeft } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
@@ -27,6 +28,21 @@ export function ReviewPage() {
   const t = useT()
   const { dir } = useLocale()
   const { reviewQueue } = useLocalizedData()
+  const [queue, setQueue] = useState(reviewQueue)
+
+  useEffect(() => {
+    setQueue(reviewQueue)
+  }, [reviewQueue])
+
+  async function handleReviewAction(id: string, action: "approve" | "return") {
+    const response = await fetch(`/api/review-queue/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    })
+    if (!response.ok) return
+    setQueue((items) => items.filter((item) => item.id !== id))
+  }
 
   return (
     <AppShell
@@ -49,12 +65,12 @@ export function ReviewPage() {
       </Card>
 
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-heading text-base font-bold text-foreground">{t("pages.review.queue")} ({reviewQueue.length})</h2>
+        <h2 className="font-heading text-base font-bold text-foreground">{t("pages.review.queue")} ({queue.length})</h2>
         <p className="text-xs text-muted-foreground">{t("pages.review.queueHint")}</p>
       </div>
 
       <div className="space-y-3">
-        {reviewQueue.map((r) => {
+        {queue.map((r) => {
           const stageKey = reviewStageKey[r.stage] ?? "draft"
           const priorityKey = reviewPriorityKey[r.priority] ?? "normal"
           return (
@@ -85,8 +101,12 @@ export function ReviewPage() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-                <Button variant="outline" size="sm"><X className="h-4 w-4" /> {t("pages.review.returnForEdit")}</Button>
-                <Button size="sm"><Check className="h-4 w-4" /> {t("pages.review.approveAndPublish")}</Button>
+                <Button variant="outline" size="sm" onClick={() => handleReviewAction(r.id, "return")}>
+                  <X className="h-4 w-4" /> {t("pages.review.returnForEdit")}
+                </Button>
+                <Button size="sm" onClick={() => handleReviewAction(r.id, "approve")}>
+                  <Check className="h-4 w-4" /> {t("pages.review.approveAndPublish")}
+                </Button>
               </div>
             </div>
           )

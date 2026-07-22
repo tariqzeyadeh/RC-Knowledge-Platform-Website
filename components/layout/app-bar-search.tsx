@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Clock, Search } from "lucide-react"
 import { useLocale, useT } from "@/hooks/use-locale"
-import { getSearchSuggestions } from "@/services/knowledge/asset-search.service"
-import { cn } from "@/lib/utils"
+import { cn } from "@/utils"
 
 function highlightMatch(term: string, query: string) {
   const trimmed = query.trim()
@@ -37,6 +36,7 @@ export function AppBarSearch() {
   const [value, setValue] = useState("")
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,10 +45,23 @@ export function AppBarSearch() {
     setActiveIndex(-1)
   }, [pathname])
 
-  const suggestions = useMemo(
-    () => (open ? getSearchSuggestions(value, locale) : []),
-    [open, value, locale],
-  )
+  useEffect(() => {
+    if (!open) {
+      setSuggestions([])
+      return
+    }
+
+    const params = new URLSearchParams({ locale, limit: "8" })
+    if (value.trim()) params.set("q", value.trim())
+
+    fetch(`/api/search/suggestions?${params.toString()}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("suggestions_failed")
+        return response.json() as Promise<{ suggestions: string[] }>
+      })
+      .then((payload) => setSuggestions(payload.suggestions))
+      .catch(() => setSuggestions([]))
+  }, [open, value, locale])
 
   const showDropdown = open && suggestions.length > 0
   const isPopular = !value.trim()

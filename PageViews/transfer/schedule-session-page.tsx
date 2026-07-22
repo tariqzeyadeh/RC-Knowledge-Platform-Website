@@ -35,9 +35,40 @@ export function ScheduleSessionPage() {
   const [attendees, setAttendees] = useState("12")
   const [summary, setSummary] = useState("")
   const [agenda, setAgenda] = useState(["", ""])
+  const [scheduledId, setScheduledId] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
-  const scheduledId = "TS-24"
   const emDash = t("common.emDash")
+
+  async function handleSubmit() {
+    if (!title.trim() || !expert.trim() || !date) return
+    setSubmitting(true)
+    try {
+      const response = await fetch("/api/transfer-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          expert: expert.trim(),
+          date,
+          domainId: `domain-${domain}`,
+          departmentLabel: department.trim() || undefined,
+          durationId: `td-${duration}`,
+          facilitator: facilitator.trim(),
+          sessionTypeId: sessionType,
+          attendees: Number(attendees) || 0,
+          agenda: agenda.filter(Boolean),
+          summary: summary.trim(),
+        }),
+      })
+      if (!response.ok) throw new Error("schedule_failed")
+      const payload = (await response.json()) as { session: { id: string } }
+      setScheduledId(payload.session.id)
+      setDone(true)
+    } catch {
+      setSubmitting(false)
+    }
+  }
   if (done) {
     return (
       <AppShell breadcrumb={[
@@ -271,7 +302,7 @@ export function ScheduleSessionPage() {
                 {t("common.next")} <ArrowLeft className={cn("h-4 w-4", dir === "ltr" && "rotate-180")} />
               </Button>
             ) : (
-              <Button onClick={() => setDone(true)}>
+              <Button onClick={handleSubmit} disabled={submitting}>
                 <Calendar className="h-4 w-4" /> {t("common.confirmSchedule")}
               </Button>
             )}
