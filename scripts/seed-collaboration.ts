@@ -452,6 +452,7 @@ export async function clearCollaborationTables() {
   await db.delete(reviewItems)
   await db.delete(knowledgeNeeds)
   await db.delete(communityPosts)
+  await db.delete(communityMembers)
   await db.delete(communityLinkedAssets)
   await db.delete(communityItems)
   await db.delete(communities)

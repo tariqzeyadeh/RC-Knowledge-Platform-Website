@@ -1,5 +1,5 @@
 import { getLocaleFromRequest, jsonResponse, errorResponse } from "@/lib/api/http"
-import { requireSession } from "@/lib/api/session"
+import { getSessionUser, requireSession } from "@/lib/api/session"
 import {
   createCommunityPost,
   getCommunity,
@@ -12,7 +12,8 @@ export async function GET(
 ) {
   const { id } = await params
   const locale = getLocaleFromRequest(request)
-  const community = await getCommunity(id, locale)
+  const user = await getSessionUser()
+  const community = await getCommunity(id, locale, user)
   if (!community) return errorResponse("not_found", 404)
   return jsonResponse({ community })
 }
@@ -29,7 +30,7 @@ export async function PATCH(
   const body = (await request.json()) as { action?: string; title?: string }
 
   if (body.action === "join") {
-    const community = await joinCommunity(id, locale)
+    const community = await joinCommunity(id, user, locale)
     if (!community) return errorResponse("not_found", 404)
     return jsonResponse({ community })
   }

@@ -203,6 +203,19 @@ export const communityPosts = sqliteTable("community_posts", {
   convertedToAssetId: text("converted_to_asset_id"),
 })
 
+export const communityMembers = sqliteTable(
+  "community_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    communityId: text("community_id")
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    username: text("username").notNull(),
+    joinedAt: text("joined_at").notNull(),
+  },
+  (table) => [uniqueIndex("community_members_community_username_idx").on(table.communityId, table.username)],
+)
+
 export const transferSessions = sqliteTable("transfer_sessions", {
   id: text("id").primaryKey(),
   titleAr: text("title_ar").notNull(),

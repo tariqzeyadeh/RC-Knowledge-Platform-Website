@@ -76,6 +76,7 @@ export type Community = {
   recentPosts: CommunityPost[]
   linkedAssetIds: string[]
   charter: string
+  isMember?: boolean
 }
 
 export type TransferOutputStatus =

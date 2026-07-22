@@ -4,6 +4,7 @@ import {
   communities,
   communityItems,
   communityLinkedAssets,
+  communityMembers,
   communityPosts,
   knowledgeNeeds,
   reviewItems,
@@ -35,6 +36,7 @@ function mapCommunityRow(
   linked: Array<typeof communityLinkedAssets.$inferSelect>,
   posts: Array<typeof communityPosts.$inferSelect>,
   domainLabel: string,
+  isMember = false,
 ): Community {
   return {
     id: row.id,
@@ -59,12 +61,36 @@ function mapCommunityRow(
       replies: post.replies,
       convertedToAsset: post.convertedToAssetId ?? undefined,
     })),
+    isMember,
   }
+}
+
+type CommunityViewer = {
+  username: string
+  displayName: string
+}
+
+async function isCommunityMember(
+  communityId: string,
+  user: CommunityViewer,
+  community: Pick<Community, "owner" | "moderators">,
+) {
+  if (user.displayName === community.owner) return true
+  if (community.moderators.includes(user.displayName)) return true
+
+  const db = getDb()
+  const row = await db
+    .select()
+    .from(communityMembers)
+    .where(and(eq(communityMembers.communityId, communityId), eq(communityMembers.username, user.username)))
+    .get()
+  return Boolean(row)
 }
 
 async function mapCommunity(
   row: typeof communities.$inferSelect,
   locale: Locale,
+  user?: CommunityViewer | null,
 ): Promise<Community> {
   const db = getDb()
   const [items, linked, posts] = await Promise.all([
@@ -85,7 +111,11 @@ async function mapCommunity(
     readCachedLookupLabel("domain", row.domainId, locale) ??
     (await resolveCommunityDomainLabel(row.domainId, locale))
 
-  return mapCommunityRow(row, locale, items, linked, posts, domainLabel)
+  const base = mapCommunityRow(row, locale, items, linked, posts, domainLabel)
+  if (!user) return base
+
+  const member = await isCommunityMember(row.id, user, base)
+  return { ...base, isMember: member }
 }
 
 export async function listCommunities(locale: Locale = "ar"): Promise<Community[]> {
@@ -146,11 +176,15 @@ export async function listCommunities(locale: Locale = "ar"): Promise<Community[
   })
 }
 
-export async function getCommunity(id: string, locale: Locale = "ar") {
+export async function getCommunity(
+  id: string,
+  locale: Locale = "ar",
+  user?: CommunityViewer | null,
+) {
   const db = getDb()
   const row = await db.select().from(communities).where(eq(communities.id, id)).get()
   if (!row) return null
-  return mapCommunity(row, locale)
+  return mapCommunity(row, locale, user)
 }
 
 export async function createCommunity(
@@ -169,6 +203,7 @@ export async function createCommunity(
     topicsAr: string[]
     topicsEn?: string[]
     moderators: string[]
+    creatorUsername: string
   },
   locale: Locale = "ar",
 ) {
@@ -233,7 +268,16 @@ export async function createCommunity(
     await db.insert(communityItems).values(itemRows)
   }
 
-  return getCommunity(data.id, locale)
+  await db.insert(communityMembers).values({
+    communityId: data.id,
+    username: data.creatorUsername,
+    joinedAt: new Date().toISOString(),
+  })
+
+  return getCommunity(data.id, locale, {
+    username: data.creatorUsername,
+    displayName: data.owner,
+  })
 }
 
 async function mapTransferOutput(
@@ -498,15 +542,30 @@ export async function voteNeed(id: string, locale: Locale = "ar") {
   return getNeed(id, locale)
 }
 
-export async function joinCommunity(id: string, locale: Locale = "ar") {
+export async function joinCommunity(
+  id: string,
+  user: CommunityViewer,
+  locale: Locale = "ar",
+) {
+  const existing = await getCommunity(id, locale, user)
+  if (!existing) return null
+  if (existing.isMember) return existing
+
   const db = getDb()
   const row = await db.select().from(communities).where(eq(communities.id, id)).get()
   if (!row) return null
+
+  await db.insert(communityMembers).values({
+    communityId: id,
+    username: user.username,
+    joinedAt: new Date().toISOString(),
+  })
   await db
     .update(communities)
     .set({ members: row.members + 1 })
     .where(eq(communities.id, id))
-  return getCommunity(id, locale)
+
+  return getCommunity(id, locale, user)
 }
 
 export async function createCommunityPost(

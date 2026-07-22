@@ -148,7 +148,7 @@ export function CommunityDetailView({ id }: { id: string }) {
               <p className="mt-1 text-sm text-muted-foreground">{community.desc}</p>
             </div>
           </div>
-          {community.active && (
+          {community.active && !community.isMember && (
             <Button onClick={handleJoin} disabled={joining}>
               <Plus className="h-4 w-4" /> {t("common.joinCommunity")}
             </Button>

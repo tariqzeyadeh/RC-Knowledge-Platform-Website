@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       moderators: body.moderators
         ? body.moderators.split(/[,،]/).map((item) => item.trim()).filter(Boolean)
         : [],
+      creatorUsername: user.username,
     },
     locale,
   )
