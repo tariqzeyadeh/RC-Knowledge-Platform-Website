@@ -7,7 +7,7 @@ import {
   Calendar, RefreshCw, ThumbsUp, ThumbsDown, Link2, ShieldAlert,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { AssetCard, ConfidentialityBadge, StatusBadge, DemoDataGate } from "@/components/shared"
+import { AssetCard, ConfidentialityBadge, StatusBadge } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -48,7 +48,6 @@ export function KnowledgeDetailView({ id }: { id: string }) {
       { label: t("pages.library.title"), href: "/library" },
       { label: asset.id },
     ]}>
-      <DemoDataGate>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <article>
           <div className="rounded-xl border border-border bg-card p-6">
@@ -189,7 +188,6 @@ export function KnowledgeDetailView({ id }: { id: string }) {
           {related.map((r) => <AssetCard key={r.id} asset={r} categoryName={getCategory(r.category)?.name} />)}
         </div>
       </section>
-      </DemoDataGate>
     </AppShell>
   )
 }

@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { ListChecks, ChevronUp, Building2, User2, Plus } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { needPriorityKey, needStatusKey } from "@/i18n/enum-maps"
@@ -51,17 +50,14 @@ export function NeedsPage() {
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.needs.title") }]}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <DemoDataGate>
         <div className="flex gap-3">
           <Stat label={t("pages.needs.newRequests")} value={needs.filter((n) => needStatusKey[n.status] === "new").length} formatNumber={formatNumber} />
           <Stat label={t("pages.needs.inProduction")} value={needs.filter((n) => needStatusKey[n.status] === "inProduction").length} formatNumber={formatNumber} />
           <Stat label={t("pages.needs.published")} value={needs.filter((n) => needStatusKey[n.status] === "published").length} formatNumber={formatNumber} />
         </div>
-        </DemoDataGate>
         <ButtonLink href="/needs/create"><Plus className="h-4 w-4" /> {t("pages.needs.create")}</ButtonLink>
       </div>
 
-      <DemoDataGate>
       <div className="space-y-3">
         {sorted.map((n) => {
           const statusKey = needStatusKey[n.status] ?? "new"
@@ -101,7 +97,6 @@ export function NeedsPage() {
           )
         })}
       </div>
-      </DemoDataGate>
     </AppShell>
   )
 }

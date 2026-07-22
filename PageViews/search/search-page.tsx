@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Search, FileText, Eye, Star, Clock, Sparkles, X } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { ConfidentialityBadge, DemoDataGate } from "@/components/shared"
+import { ConfidentialityBadge } from "@/components/shared"
 import { useAssetSearch } from "@/hooks/use-asset-search"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
@@ -123,7 +123,6 @@ export function SearchPage() {
           )}
         </div>
 
-        <DemoDataGate>
         <div className="mt-3 flex w-full min-w-0 flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">{t("pages.search.suggestions")}</span>
           {searchSuggestions.map((s) => (
@@ -245,7 +244,6 @@ export function SearchPage() {
           </div>
         </aside>
         </div>
-        </DemoDataGate>
       </div>
     </AppShell>
   )

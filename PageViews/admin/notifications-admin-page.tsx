@@ -13,7 +13,6 @@ import {
   Trash2,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import {
   filterByKind,
@@ -218,7 +217,6 @@ export function NotificationsAdminPage() {
         { label: t("pages.notificationsAdmin.title") },
       ]}
     >
-      <DemoDataGate>
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
@@ -426,7 +424,6 @@ export function NotificationsAdminPage() {
           </tbody>
         </table>
       </div>
-      </DemoDataGate>
 
       <Dialog open={formOpen} onOpenChange={(open) => !open && closeForm()}>
         <DialogContent className="sm:max-w-lg">

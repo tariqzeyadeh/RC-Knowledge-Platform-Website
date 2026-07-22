@@ -5,7 +5,6 @@ import { Users, MessageSquare, Crown, Plus, Circle } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
-import { DemoDataGate } from "@/components/shared"
 import { ButtonLink } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/utils"
@@ -24,17 +23,14 @@ export function CommunitiesPage() {
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.communities.title") }]}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <DemoDataGate>
         <div className="flex flex-wrap gap-3">
           <Stat label={t("pages.communities.activeCommunities")} value={formatNumber(communities.filter((c) => c.active).length)} />
           <Stat label={t("pages.communities.totalMembers")} value={formatNumber(totalMembers)} />
           <Stat label={t("pages.communities.totalPosts")} value={formatNumber(totalPosts)} />
         </div>
-        </DemoDataGate>
         <ButtonLink href="/communities/create"><Plus className="h-4 w-4" /> {t("pages.communities.create")}</ButtonLink>
       </div>
 
-      <DemoDataGate>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {communities.map((c) => (
           <Card key={c.id} className="flex flex-col transition-colors hover:border-primary/40">
@@ -68,7 +64,6 @@ export function CommunitiesPage() {
           </Card>
         ))}
       </div>
-      </DemoDataGate>
     </AppShell>
   )
 }

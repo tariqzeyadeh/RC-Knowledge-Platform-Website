@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { ClipboardCheck, Check, X, Clock, User2, Building2, ArrowLeft } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { DemoDataGate } from "@/components/shared"
 import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { reviewPriorityKey, reviewStageKey } from "@/i18n/enum-maps"
@@ -31,6 +30,10 @@ export function ReviewPage() {
   const { reviewQueue, refresh } = useLocalizedData()
   const [queue, setQueue] = useState(reviewQueue)
   const [acting, setActing] = useState<string | null>(null)
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
 
   useEffect(() => {
     setQueue(reviewQueue)
@@ -78,7 +81,11 @@ export function ReviewPage() {
       </div>
 
       <div className="space-y-3">
-        <DemoDataGate>
+        {queue.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+            {t("common.noResults")}
+          </div>
+        ) : null}
         {queue.map((r) => {
           const stageKey = reviewStageKey[r.stage] ?? "draft"
           const priorityKey = reviewPriorityKey[r.priority] ?? "normal"
@@ -120,7 +127,6 @@ export function ReviewPage() {
             </div>
           )
         })}
-        </DemoDataGate>
       </div>
     </AppShell>
   )

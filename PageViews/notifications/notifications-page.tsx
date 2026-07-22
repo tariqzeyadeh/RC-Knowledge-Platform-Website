@@ -5,7 +5,6 @@ import {
   Bell, ClipboardCheck, CheckCircle2, XCircle, FileText, AlarmClock, Lock, CheckCheck,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
-import { DemoDataGate } from "@/components/shared"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button } from "@/components/ui/button"
@@ -54,7 +53,6 @@ export function NotificationsPage() {
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <DemoDataGate>
           {notifications.map((n) => {
             const typeInfo = typeMap[n.type]
             const Icon = typeInfo.icon
@@ -75,7 +73,6 @@ export function NotificationsPage() {
               </div>
             )
           })}
-          </DemoDataGate>
         </div>
       </div>
     </AppShell>

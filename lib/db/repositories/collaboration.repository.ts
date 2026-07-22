@@ -279,7 +279,11 @@ async function mapReviewItem(row: typeof reviewItems.$inferSelect, locale: Local
 
 export async function listReviewQueue(locale: Locale = "ar") {
   const db = getDb()
-  const rows = await db.select().from(reviewItems).orderBy(desc(reviewItems.submittedAt))
+  const rows = await db
+    .select()
+    .from(reviewItems)
+    .where(eq(reviewItems.stageId, "rs-review"))
+    .orderBy(desc(reviewItems.submittedAt))
   return Promise.all(rows.map((row) => mapReviewItem(row, locale)))
 }
 
