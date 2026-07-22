@@ -7,7 +7,6 @@ import { AppShell } from "@/components/layout/app-shell"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { trainingLevelKey } from "@/i18n/enum-maps"
-import { DemoDataGate } from "@/components/shared"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,8 +30,12 @@ export function TrainingPage() {
       description={t("pages.training.description")}
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.training.title") }]}
     >
-      <DemoDataGate>
       <h2 className="mb-4 font-heading text-base font-bold text-foreground">{t("pages.training.programs")}</h2>
+      {trainingPrograms.length === 0 ? (
+        <div className="mb-10 rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+          {t("common.noResults")}
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         {trainingPrograms.map((p) => {
           const levelKey = trainingLevelKey[p.level] ?? "beginner"
@@ -65,10 +68,10 @@ export function TrainingPage() {
           )
         })}
       </div>
+      )}
 
       <h2 className="mb-4 mt-10 font-heading text-base font-bold text-foreground">{t("pages.training.manuals")}</h2>
       <div className="grid gap-4 sm:grid-cols-3">
-        {/* STATIC_DEMO_DATA: training manual cards from i18n keys
         {manualKeys.map((key) => (
           <div key={key} className="flex flex-col rounded-lg border border-border bg-card p-5">
             <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
@@ -79,9 +82,7 @@ export function TrainingPage() {
             <Button variant="outline" size="sm" className="mt-3 w-full"><Download className="h-4 w-4" /> {t("common.downloadGuide")}</Button>
           </div>
         ))}
-        */}
       </div>
-      </DemoDataGate>
     </AppShell>
   )
 }

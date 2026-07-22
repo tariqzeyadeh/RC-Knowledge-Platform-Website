@@ -448,6 +448,8 @@ export const ar = {
         id: "المعرّف",
         domain: "المجال",
         createdAt: "تاريخ الإنشاء",
+        questionTitle: "عنوان السؤال",
+        questionPlaceholder: "اكتب سؤالك أو موضوع النقاش...",
       },
     },
     transfer: {

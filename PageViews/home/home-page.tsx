@@ -14,7 +14,6 @@ import { useLocale, useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ButtonLink } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/utils"
 import type { UserRole } from "@/types/auth"
 
@@ -37,9 +36,15 @@ export function HomePage() {
   const { user } = useAuth()
   const role = user?.role ?? "seeker"
   const { dict, dir, formatNumber } = useLocale()
-  const { kpis, seciLayers, assets, categories, monthlyActivity, contentHealth, topSearches, reviewQueue } = useLocalizedData()
+  const { kpis, seciLayers, assets, categories, monthlyActivity, contentHealth, topSearches, reviewQueue, loading } = useLocalizedData()
   const org = dict.org
   const visibleKpis = kpis.filter((k) => KPI_BY_ROLE[role].includes(k.icon))
+  const publishedAssets = assets.filter((a) => a.status === "published")
+  const recentAssets = publishedAssets.slice(0, 4)
+  const liveCategoryCounts = new Map<string, number>()
+  for (const asset of publishedAssets) {
+    liveCategoryCounts.set(asset.category, (liveCategoryCounts.get(asset.category) ?? 0) + 1)
+  }
 
   return (
     <AppShell>
@@ -116,50 +121,12 @@ export function HomePage() {
         </div>
       </section>
 
-      <DemoDataGate>
-      {role === "seeker" && (
-        <section className="mb-10">
-          <SectionHeading title={t("pages.home.topSearchesTitle")} />
-          <Card>
-            <CardContent className="p-4">
-              <ul className="space-y-3">
-                {topSearches.slice(0, 5).map((item) => (
-                  <li key={item.term}>
-                    <Link href={`/search?q=${encodeURIComponent(item.term)}`} className="block">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-foreground hover:text-primary">{item.term}</span>
-                        <span className="text-muted-foreground">{item.count}</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${item.success}%` }} />
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
       {role === "contributor" && (
         <section className="mb-10">
           <SectionHeading title={t("pages.home.myContributionsTitle")} />
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-xs text-muted-foreground">{t("pages.home.myContributionsDesc")}</p>
-              {/* STATIC_DEMO_DATA: placeholder contribution status cards
-              {[
-                { label: t("pages.home.contributionDraft"), status: "draft" as const },
-                { label: t("pages.home.contributionReview"), status: "review" as const },
-                { label: t("pages.home.contributionPublished"), status: "published" as const },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-                  <span className="text-sm text-foreground">{item.label}</span>
-                  <Badge variant="secondary">{t(`presentation.status.${item.status}`)}</Badge>
-                </div>
-              ))}
-              */}
               <ButtonLink href="/upload" variant="outline" size="sm" className="mt-2">
                 <FilePlus2 className="h-4 w-4" />
                 {t("pages.home.addContribution")}
@@ -183,18 +150,110 @@ export function HomePage() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-xs text-muted-foreground">{t("pages.home.pendingReviewDesc")}</p>
-              {reviewQueue.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-lg border border-border bg-card px-3 py-2.5">
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                    <span>{item.submittedBy}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {item.sla}
-                    </span>
-                  </p>
+              {reviewQueue.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
+                  {t("common.noResults")}
+                </p>
+              ) : (
+                reviewQueue.slice(0, 3).map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border bg-card px-3 py-2.5">
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                      <span>{item.submittedBy}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {item.sla}
+                      </span>
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      <section className="mb-10">
+        <SectionHeading
+          title={t("pages.home.recentAssets")}
+          action={
+            <Link href="/library" className="link-arrow hover:underline">
+              {t("common.viewAll")}{" "}
+              <ChevronLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} />
+            </Link>
+          }
+        />
+        {loading ? (
+          <div className="rounded-lg border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+            {t("common.loading")}
+          </div>
+        ) : recentAssets.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+            {t("common.noResults")}
+          </div>
+        ) : (
+          <div className="stagger-children grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {recentAssets.map((a) => (
+              <AssetCard key={a.id} asset={a} categoryName={categories.find((c) => c.id === a.category)?.name} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading
+          title={t("pages.home.categories")}
+          action={
+            <Link href="/library" className="link-arrow hover:underline">
+              {t("pages.home.fullLibrary")}{" "}
+              <ChevronLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} />
+            </Link>
+          }
+        />
+        <div className="stagger-children grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {categories.map((c) => {
+            const Icon = catIcons[c.icon] ?? FolderKanban
+            const count = liveCategoryCounts.get(c.id) ?? c.count
+            return (
+              <Link key={c.id} href={`/library?cat=${c.id}`}
+                className="interactive-card group flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary/40">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/10 group-hover:text-primary">
+                  <Icon className="icon-hover h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <h3 className="truncate font-heading text-sm font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">{c.name}</h3>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-primary rtl:group-hover:translate-x-0.5 ltr:group-hover:-translate-x-0.5" />
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{formatNumber(count)} {t("common.assets")}</p>
                 </div>
-              ))}
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      <DemoDataGate>
+      {role === "seeker" && (
+        <section className="mb-10">
+          <SectionHeading title={t("pages.home.topSearchesTitle")} />
+          <Card>
+            <CardContent className="p-4">
+              <ul className="space-y-3">
+                {topSearches.slice(0, 5).map((item) => (
+                  <li key={item.term}>
+                    <Link href={`/search?q=${encodeURIComponent(item.term)}`} className="block">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground hover:text-primary">{item.term}</span>
+                        <span className="text-muted-foreground">{item.count}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${item.success}%` }} />
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         </section>
@@ -275,55 +334,6 @@ export function HomePage() {
           </Card>
         </section>
       )}
-
-      <section className="mb-10">
-        <SectionHeading
-          title={t("pages.home.recentAssets")}
-          action={
-            <Link href="/library" className="link-arrow hover:underline">
-              {t("common.viewAll")}{" "}
-              <ChevronLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} />
-            </Link>
-          }
-        />
-        <div className="stagger-children grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {assets.filter((a) => a.status === "published").slice(0, 4).map((a) => (
-            <AssetCard key={a.id} asset={a} categoryName={categories.find((c) => c.id === a.category)?.name} />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionHeading
-          title={t("pages.home.categories")}
-          action={
-            <Link href="/library" className="link-arrow hover:underline">
-              {t("pages.home.fullLibrary")}{" "}
-              <ChevronLeft className={cn("h-3.5 w-3.5", dir === "ltr" && "rotate-180")} />
-            </Link>
-          }
-        />
-        <div className="stagger-children grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((c) => {
-            const Icon = catIcons[c.icon] ?? FolderKanban
-            return (
-              <Link key={c.id} href={`/library?cat=${c.id}`}
-                className="interactive-card group flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary/40">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/10 group-hover:text-primary">
-                  <Icon className="icon-hover h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className="truncate font-heading text-sm font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">{c.name}</h3>
-                    <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-primary rtl:group-hover:translate-x-0.5 ltr:group-hover:-translate-x-0.5" />
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{formatNumber(c.count)} {t("common.assets")}</p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      </section>
       </DemoDataGate>
     </AppShell>
   )

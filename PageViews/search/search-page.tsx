@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import Link from "next/link"
 import { Search, FileText, Eye, Star, Clock, Sparkles, X } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
@@ -21,14 +22,40 @@ import { cn } from "@/utils"
 export function SearchPage() {
   const t = useT()
   const { formatNumber } = useLocale()
-  const { categories, knowledgeTypes, topSearches, searchSuggestions, departments, fileTypes } = useLocalizedData()
+  const { categories, knowledgeTypes, topSearches, searchSuggestions, departments, fileTypes, assets } = useLocalizedData()
   const {
-    query, setQuery, sort, setSort, results,
+    query, setQuery, sort, setSort, results, loading: searchLoading,
     categoryId, setCategoryId, type, setType,
     department, setDepartment, fileType, setFileType,
     dateFrom, setDateFrom, dateTo, setDateTo,
     hasActiveFilters, clearFilters,
   } = useAssetSearch()
+
+  const displayTopSearches = useMemo(() => {
+    if (topSearches.length > 0) return topSearches
+
+    const counts = new Map<string, number>()
+    for (const asset of assets.filter((asset) => asset.status === "published")) {
+      for (const keyword of asset.keywords) {
+        const term = keyword.trim()
+        if (!term) continue
+        counts.set(term, (counts.get(term) ?? 0) + asset.views + 1)
+      }
+    }
+
+    const ranked = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+
+    if (ranked.length === 0) return []
+
+    const maxCount = ranked[0][1]
+    return ranked.map(([term, count]) => ({
+      term,
+      count,
+      success: Math.round((count / maxCount) * 100),
+    }))
+  }, [assets, topSearches])
 
   return (
     <AppShell
@@ -227,7 +254,10 @@ export function SearchPage() {
               <Sparkles className="h-4 w-4 text-gold" /> {t("pages.search.topSearches")}
             </p>
             <ul className="space-y-3">
-              {topSearches.map((item) => (
+              {displayTopSearches.length === 0 ? (
+                <li className="text-xs text-muted-foreground">{t("common.noResults")}</li>
+              ) : (
+                displayTopSearches.map((item) => (
                 <li key={item.term}>
                   <button onClick={() => setQuery(item.term)} className="w-full text-start">
                     <div className="flex items-center justify-between text-xs">
@@ -239,7 +269,7 @@ export function SearchPage() {
                     </div>
                   </button>
                 </li>
-              ))}
+              )))}
             </ul>
           </div>
         </aside>

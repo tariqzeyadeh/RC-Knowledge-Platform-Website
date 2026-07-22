@@ -98,6 +98,7 @@ export async function searchAssets(
   const normalized = filters.query?.trim().toLowerCase() ?? ""
 
   results = results.filter((asset) => {
+    if (asset.status !== "published") return false
     if (filters.categoryId && filters.categoryId !== "all" && asset.category !== filters.categoryId) {
       return false
     }

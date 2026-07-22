@@ -14,9 +14,10 @@
     "db:push:force": "drizzle-kit push --force",
     "db:push:ci": "tsx scripts/push-schema-if-remote.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:ci": "tsx scripts/seed-if-remote.ts",
     "db:setup": "npm run db:push && npm run db:seed",
     "db:remote-setup": "npm run db:setup",
-    "vercel-build": "npm run db:push:ci && npm run build",
+    "vercel-build": "npm run db:push:ci && npm run db:seed:ci && npm run build",
     "test:flows": "tsx scripts/test-flows.ts"
   },
   "dependencies": {

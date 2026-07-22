@@ -19,7 +19,7 @@ const stepKeys = ["typeDomain", "details", "agenda", "review"] as const
 export function ScheduleSessionPage() {
   const t = useT()
   const { dir, dict } = useLocale()
-  const { transferSessionTypes, domains, transferDurations, refresh } = useLocalizedData()
+  const { transferSessionTypes, domains, transferDurations, refresh, loading, error } = useLocalizedData()
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
   const [sessionTypeId, setSessionTypeId] = useState("")

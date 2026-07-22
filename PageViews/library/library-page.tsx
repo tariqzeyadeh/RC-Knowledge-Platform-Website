@@ -42,6 +42,11 @@ function LibraryPageContent() {
   const { assets, categories, knowledgeTypes, confidentialityLevels } = useLocalizedData()
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get("cat") ?? "all"
+  const publishedAssets = assets.filter((asset) => asset.status === "published")
+  const categoryCounts = new Map<string, number>()
+  for (const asset of publishedAssets) {
+    categoryCounts.set(asset.category, (categoryCounts.get(asset.category) ?? 0) + 1)
+  }
   const {
     query,
     setQuery,
@@ -68,9 +73,9 @@ function LibraryPageContent() {
               <SlidersHorizontal className="h-4 w-4" /> {t("pages.library.categories")}
             </p>
             <ul className="space-y-1">
-              <FilterItem label={t("pages.library.allCategories")} count={assets.length} active={cat === "all"} onClick={() => setCat("all")} formatNumber={formatNumber} />
+              <FilterItem label={t("pages.library.allCategories")} count={publishedAssets.length} active={cat === "all"} onClick={() => setCat("all")} formatNumber={formatNumber} />
               {categories.map((c) => (
-                <FilterItem key={c.id} label={c.name} count={c.count} active={cat === c.id} onClick={() => setCat(c.id)} formatNumber={formatNumber} />
+                <FilterItem key={c.id} label={c.name} count={categoryCounts.get(c.id) ?? 0} active={cat === c.id} onClick={() => setCat(c.id)} formatNumber={formatNumber} />
               ))}
             </ul>
           </div>

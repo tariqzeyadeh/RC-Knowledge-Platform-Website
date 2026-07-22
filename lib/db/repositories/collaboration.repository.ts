@@ -498,6 +498,44 @@ export async function voteNeed(id: string, locale: Locale = "ar") {
   return getNeed(id, locale)
 }
 
+export async function joinCommunity(id: string, locale: Locale = "ar") {
+  const db = getDb()
+  const row = await db.select().from(communities).where(eq(communities.id, id)).get()
+  if (!row) return null
+  await db
+    .update(communities)
+    .set({ members: row.members + 1 })
+    .where(eq(communities.id, id))
+  return getCommunity(id, locale)
+}
+
+export async function createCommunityPost(
+  communityId: string,
+  data: { title: string; author: string },
+  locale: Locale = "ar",
+) {
+  const db = getDb()
+  const row = await db.select().from(communities).where(eq(communities.id, communityId)).get()
+  if (!row) return null
+
+  const postId = `CP-${Date.now()}`
+  const today = new Date().toISOString().slice(0, 10)
+  await db.insert(communityPosts).values({
+    id: postId,
+    communityId,
+    title: data.title,
+    author: data.author,
+    date: today,
+    replies: 0,
+  })
+  await db
+    .update(communities)
+    .set({ posts: row.posts + 1 })
+    .where(eq(communities.id, communityId))
+
+  return getCommunity(communityId, locale)
+}
+
 export async function listNotifications(locale: Locale = "ar") {
   const db = getDb()
   const rows = await db.select().from(userNotifications).orderBy(desc(userNotifications.createdAt))

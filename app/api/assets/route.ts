@@ -88,15 +88,17 @@ export async function GET(request: Request) {
     confidentiality !== "all" ||
     fileType !== "all" ||
     dateFrom ||
-    dateTo
+    dateTo ||
+    sort !== "relevance"
 
-  const assets = hasFilters
-    ? await searchAssets(
-        { query, categoryId, type, department, confidentiality, fileType, dateFrom, dateTo },
-        sort,
-        locale,
-      )
-    : await listAssets(locale)
+  const assets =
+    hasFilters
+      ? await searchAssets(
+          { query, categoryId, type, department, confidentiality, fileType, dateFrom, dateTo },
+          sort,
+          locale,
+        )
+      : await listAssets(locale)
 
   return jsonResponse({ assets })
 }

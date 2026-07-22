@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import Link from "next/link"
 import {
@@ -13,6 +14,7 @@ import { needPriorityKey, needStatusKey } from "@/i18n/enum-maps"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/utils"
+import type { KnowledgeNeed } from "@/types/domain"
 
 const statusStyleByKey: Record<string, string> = {
   new: "bg-sky-50 text-sky-700 border-sky-200",
@@ -29,9 +31,71 @@ const priorityStyleByKey: Record<string, string> = {
 export function NeedDetailView({ id }: { id: string }) {
   const t = useT()
   const { dir } = useLocale()
-  const { getNeed, getAsset } = useLocalizedData()
-  const need = getNeed(id)
-  if (!need) return null
+  const { getNeed, getAsset, refresh } = useLocalizedData()
+  const [need, setNeed] = useState<KnowledgeNeed | null>(getNeed(id) as KnowledgeNeed | null)
+  const [loading, setLoading] = useState(!need)
+  const [voting, setVoting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/needs/${encodeURIComponent(id)}`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("not_found")
+        return response.json() as Promise<{ need: KnowledgeNeed }>
+      })
+      .then((payload) => {
+        if (!cancelled) setNeed(payload.need)
+      })
+      .catch(() => {
+        if (!cancelled) setNeed(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  async function handleVote() {
+    if (!need) return
+    setVoting(true)
+    try {
+      const response = await fetch(`/api/needs/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "vote" }),
+      })
+      if (!response.ok) return
+      const payload = (await response.json()) as { need: KnowledgeNeed }
+      setNeed(payload.need)
+      await refresh()
+    } finally {
+      setVoting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <AppShell breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.needs.title"), href: "/needs" }, { label: id }]}>
+        <div className="rounded-lg border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+          {t("common.loading")}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (!need) {
+    return (
+      <AppShell breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.needs.title"), href: "/needs" }, { label: id }]}>
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+          {t("common.noResults")}
+        </div>
+      </AppShell>
+    )
+  }
 
   const statusKey = needStatusKey[need.status] ?? "new"
   const priorityKey = needPriorityKey[need.priority] ?? "medium"
@@ -62,7 +126,6 @@ export function NeedDetailView({ id }: { id: string }) {
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">{need.id}</span>
-            <Badge variant="outline" className="font-mono text-[10px]">F-18</Badge>
             <span className={cn("rounded-full border px-2.5 py-0.5 text-[11px] font-medium", statusStyleByKey[statusKey])}>
               {t(`enums.needStatus.${statusKey}`)}
             </span>
@@ -74,7 +137,12 @@ export function NeedDetailView({ id }: { id: string }) {
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{need.description}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex flex-col items-center rounded-lg border border-border bg-card px-4 py-2 transition-colors hover:border-primary/40">
+          <button
+            type="button"
+            onClick={handleVote}
+            disabled={voting}
+            className="flex flex-col items-center rounded-lg border border-border bg-card px-4 py-2 transition-colors hover:border-primary/40 disabled:opacity-60"
+          >
             <ChevronUp className="h-5 w-5 text-primary" />
             <span className="font-heading text-lg font-bold">{need.votes}</span>
             <span className="text-[10px] text-muted-foreground">{t("common.vote")}</span>

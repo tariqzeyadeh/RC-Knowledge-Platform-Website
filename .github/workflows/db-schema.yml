@@ -7,6 +7,7 @@ on:
       - "lib/db/schema.ts"
       - "drizzle.config.ts"
       - "scripts/push-schema-if-remote.ts"
+      - "scripts/seed-if-remote.ts"
   workflow_dispatch:
 
 jobs:
@@ -28,6 +29,12 @@ jobs:
 
       - name: Push schema
         run: npm run db:push:ci
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+
+      - name: Seed database if empty
+        run: npm run db:seed:ci
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

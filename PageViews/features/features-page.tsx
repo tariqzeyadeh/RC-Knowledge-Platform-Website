@@ -5,7 +5,6 @@ import { ChevronDown, Target, Lightbulb, ShieldCheck, BadgeCheck } from "lucide-
 import { AppShell } from "@/components/layout/app-shell"
 import { useT } from "@/hooks/use-locale"
 import { useLocalizedData } from "@/hooks/use-localized-data"
-import { DemoDataGate } from "@/components/shared"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/utils"
 
@@ -23,7 +22,6 @@ export function FeaturesPage() {
       description={t("pages.features.description")}
       breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.features.title") }]}
     >
-      <DemoDataGate>
       <div className="mb-6 flex flex-wrap gap-2">
         <FilterChip label={t("pages.features.allFeatures")} count={features.length} active={layer === "all"} onClick={() => setLayer("all")} />
         {seciLayers.map((l) => (
@@ -33,7 +31,11 @@ export function FeaturesPage() {
       </div>
 
       <div className="space-y-3">
-        {filtered.map((f) => {
+        {filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+            {t("common.noResults")}
+          </div>
+        ) : filtered.map((f) => {
           const isOpen = open === f.code
           const seciLayer = seciLayers.find((l) => l.id === f.layer)
           return (
@@ -84,7 +86,6 @@ export function FeaturesPage() {
           )
         })}
       </div>
-      </DemoDataGate>
     </AppShell>
   )
 }

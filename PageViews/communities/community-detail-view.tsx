@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   Users, MessageSquare, Crown, Circle, Target, BookOpen, FileText,
@@ -11,18 +12,108 @@ import { useLocalizedData } from "@/hooks/use-localized-data"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/utils"
+import type { Community } from "@/types/domain"
 
 export function CommunityDetailView({ id }: { id: string }) {
   const t = useT()
   const { formatNumber, dir } = useLocale()
-  const { getCommunity, getAsset } = useLocalizedData()
-  const community = getCommunity(id)
-  if (!community) return null
+  const { getCommunity, getAsset, refresh } = useLocalizedData()
+  const [community, setCommunity] = useState<Community | null>(getCommunity(id) as Community | null)
+  const [loading, setLoading] = useState(!community)
+  const [joining, setJoining] = useState(false)
+  const [posting, setPosting] = useState(false)
+  const [showQuestionForm, setShowQuestionForm] = useState(false)
+  const [questionTitle, setQuestionTitle] = useState("")
 
-  const linkedAssets = community.linkedAssetIds
-    .map((assetId) => getAsset(assetId))
-    .filter(Boolean)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/communities/${encodeURIComponent(id)}`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("not_found")
+        return response.json() as Promise<{ community: Community }>
+      })
+      .then((payload) => {
+        if (!cancelled) setCommunity(payload.community)
+      })
+      .catch(() => {
+        if (!cancelled) setCommunity(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  const linkedAssets = useMemo(
+    () => (community?.linkedAssetIds ?? []).map((assetId) => getAsset(assetId)).filter(Boolean),
+    [community, getAsset],
+  )
+
+  async function handleJoin() {
+    if (!community) return
+    setJoining(true)
+    try {
+      const response = await fetch(`/api/communities/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "join" }),
+      })
+      if (!response.ok) return
+      const payload = (await response.json()) as { community: Community }
+      setCommunity(payload.community)
+      await refresh()
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  async function handleAskQuestion() {
+    if (!community || !questionTitle.trim()) return
+    setPosting(true)
+    try {
+      const response = await fetch(`/api/communities/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "post", title: questionTitle.trim() }),
+      })
+      if (!response.ok) return
+      const payload = (await response.json()) as { community: Community }
+      setCommunity(payload.community)
+      setQuestionTitle("")
+      setShowQuestionForm(false)
+      await refresh()
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <AppShell breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.communities.title"), href: "/communities" }, { label: id }]}>
+        <div className="rounded-lg border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+          {t("common.loading")}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (!community) {
+    return (
+      <AppShell breadcrumb={[{ label: t("common.home"), href: "/" }, { label: t("pages.communities.title"), href: "/communities" }, { label: id }]}>
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+          {t("common.noResults")}
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell
@@ -52,14 +143,15 @@ export function CommunityDetailView({ id }: { id: string }) {
                   <Circle className={cn("h-2 w-2", community.active ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
                   {community.active ? t("pages.communities.active") : t("pages.communities.inactive")}
                 </span>
-                <Badge variant="outline" className="font-mono text-[10px]">F-01</Badge>
               </div>
               <h1 className="font-heading text-2xl font-bold text-foreground">{community.name}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{community.desc}</p>
             </div>
           </div>
           {community.active && (
-            <Button><Plus className="h-4 w-4" /> {t("common.joinCommunity")}</Button>
+            <Button onClick={handleJoin} disabled={joining}>
+              <Plus className="h-4 w-4" /> {t("common.joinCommunity")}
+            </Button>
           )}
         </div>
 
@@ -107,24 +199,52 @@ export function CommunityDetailView({ id }: { id: string }) {
               <CardTitle className="flex items-center gap-2 font-heading text-base">
                 <MessageSquare className="h-4 w-4" /> {t("pages.communities.detail.recentDiscussions")}
               </CardTitle>
-              <Button variant="outline" size="sm">{t("common.askQuestion")}</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowQuestionForm((value) => !value)}>
+                {t("common.askQuestion")}
+              </Button>
             </CardHeader>
             <CardContent className="divide-y divide-border">
-              {community.recentPosts.map((post) => (
-                <div key={post.id} className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
-                  <h3 className="text-sm font-semibold text-foreground">{post.title}</h3>
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><User2 className="h-3 w-3" />{post.author}</span>
-                    <span>{post.date}</span>
-                    <span>{post.replies} {t("common.replies")}</span>
-                    {post.convertedToAsset && (
-                      <Link href={`/knowledge/${post.convertedToAsset}`} className="flex items-center gap-1 text-primary hover:underline">
-                        <Sparkles className="h-3 w-3" /> {t("common.convertedToAsset")}
-                      </Link>
-                    )}
+              {showQuestionForm && (
+                <div className="mb-4 space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                  <div>
+                    <Label htmlFor="question-title">{t("pages.communities.detail.questionTitle")}</Label>
+                    <Input
+                      id="question-title"
+                      className="mt-1.5"
+                      value={questionTitle}
+                      onChange={(e) => setQuestionTitle(e.target.value)}
+                      placeholder={t("pages.communities.detail.questionPlaceholder")}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAskQuestion} disabled={posting || !questionTitle.trim()}>
+                      {t("common.submit")}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowQuestionForm(false)}>
+                      {t("common.cancel")}
+                    </Button>
                   </div>
                 </div>
-              ))}
+              )}
+              {community.recentPosts.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">{t("common.noResults")}</p>
+              ) : (
+                community.recentPosts.map((post) => (
+                  <div key={post.id} className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
+                    <h3 className="text-sm font-semibold text-foreground">{post.title}</h3>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><User2 className="h-3 w-3" />{post.author}</span>
+                      <span>{post.date}</span>
+                      <span>{post.replies} {t("common.replies")}</span>
+                      {post.convertedToAsset && (
+                        <Link href={`/knowledge/${post.convertedToAsset}`} className="flex items-center gap-1 text-primary hover:underline">
+                          <Sparkles className="h-3 w-3" /> {t("common.convertedToAsset")}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

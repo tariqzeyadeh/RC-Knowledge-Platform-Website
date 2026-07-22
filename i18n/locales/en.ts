@@ -450,6 +450,8 @@ export const en: Dictionary = {
         id: "ID",
         domain: "Domain",
         createdAt: "Created at",
+        questionTitle: "Question title",
+        questionPlaceholder: "Write your question or discussion topic...",
       },
     },
     transfer: {
