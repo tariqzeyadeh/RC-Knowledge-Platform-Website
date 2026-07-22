@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { assetKeywords, assetVersions, knowledgeAssets } from "@/lib/db/schema"
 import { getLookupLabel } from "@/lib/db/repositories/lookup.repository"
+import { readCachedLookupLabel } from "@/lib/db/repositories/lookup-cache"
 import type { Locale } from "@/i18n"
 import type { AssetSort, KnowledgeAsset, SearchFilters } from "@/types/domain"
 
@@ -10,12 +11,22 @@ async function mapAsset(
   locale: Locale,
   keywords: string[],
 ): Promise<KnowledgeAsset> {
+  const type =
+    readCachedLookupLabel("knowledge_type", row.knowledgeTypeId, locale) ??
+    (await getLookupLabel("knowledge_type", row.knowledgeTypeId, locale))
+  const department =
+    readCachedLookupLabel("department", row.departmentId, locale) ??
+    (await getLookupLabel("department", row.departmentId, locale))
+  const fileType =
+    readCachedLookupLabel("file_type", row.fileTypeId, locale) ??
+    (await getLookupLabel("file_type", row.fileTypeId, locale))
+
   return {
     id: row.id,
     title: locale === "en" && row.titleEn ? row.titleEn : row.titleAr,
-    type: await getLookupLabel("knowledge_type", row.knowledgeTypeId, locale),
+    type,
     category: row.categoryId,
-    department: await getLookupLabel("department", row.departmentId, locale),
+    department,
     author: row.author,
     confidentiality: row.confidentialityId as KnowledgeAsset["confidentiality"],
     version: row.version,
@@ -26,7 +37,7 @@ async function mapAsset(
     status: row.status as KnowledgeAsset["status"],
     keywords,
     summary: locale === "en" && row.summaryEn ? row.summaryEn : row.summaryAr,
-    fileType: await getLookupLabel("file_type", row.fileTypeId, locale),
+    fileType,
   }
 }
 

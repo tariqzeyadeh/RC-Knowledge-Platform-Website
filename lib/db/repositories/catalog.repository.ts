@@ -11,7 +11,8 @@ import {
   topContributors,
   trainingPrograms,
 } from "@/lib/db/schema"
-import { getLookupLabel, listCategories } from "@/lib/db/repositories/lookup.repository"
+import { getLookupLabel } from "@/lib/db/repositories/lookup.repository"
+import { readCachedLookupLabel } from "@/lib/db/repositories/lookup-cache"
 import type { Locale } from "@/i18n"
 import type { AuditEntry, Feature, Role, SeciLayer } from "@/types/domain"
 
@@ -143,8 +144,11 @@ export async function listTopContributors(locale: Locale = "ar") {
 }
 
 export async function resolveCommunityDomainLabel(domainId: string, locale: Locale) {
-  const categories = await listCategories(locale)
-  const category = categories.find((item) => item.id === domainId)
-  if (category) return category.name
+  const domainLabel = readCachedLookupLabel("domain", domainId, locale)
+  if (domainLabel) return domainLabel
+
+  const categoryLabel = readCachedLookupLabel("category", domainId, locale)
+  if (categoryLabel) return categoryLabel
+
   return getLookupLabel("domain", domainId, locale)
 }

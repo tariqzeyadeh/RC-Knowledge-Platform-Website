@@ -4,5 +4,9 @@ import { getPlatformBootstrap } from "@/lib/api/bootstrap"
 export async function GET(request: Request) {
   const locale = getLocaleFromRequest(request)
   const data = await getPlatformBootstrap(locale)
-  return jsonResponse(data)
+  return jsonResponse(data, {
+    headers: {
+      "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+    },
+  })
 }

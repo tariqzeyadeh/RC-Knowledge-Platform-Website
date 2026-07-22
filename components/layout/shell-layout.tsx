@@ -14,6 +14,7 @@ import { cn } from "@/utils"
 import { ButtonLink } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/hooks/use-auth"
+import { LocalizedDataProvider } from "@/hooks/localized-data-provider"
 import { useLocale } from "@/hooks/use-locale"
 import { filterNavGroups, canUpload, isSuperAdmin } from "@/lib/auth"
 import type { SessionUser } from "@/types/auth"
@@ -181,7 +182,8 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-background">
+    <LocalizedDataProvider>
+      <div className="min-h-screen min-w-0 overflow-x-clip bg-background">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 border-e border-sidebar-border bg-sidebar shadow-lg lg:block">
         <SidebarContent navGroups={navGroups} user={user} onLogout={() => void logout()} />
       </aside>
@@ -287,6 +289,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
       </div>
-    </div>
+      </div>
+    </LocalizedDataProvider>
   )
 }

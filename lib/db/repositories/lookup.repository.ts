@@ -1,6 +1,11 @@
 import { and, asc, eq } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { categoryTopics, lookupTranslations, lookups } from "@/lib/db/schema"
+import {
+  readCachedLookupGroup,
+  readCachedLookupLabel,
+  warmupLookupCache,
+} from "@/lib/db/repositories/lookup-cache"
 import type { Locale } from "@/i18n"
 import type { Category } from "@/types/domain"
 
@@ -12,6 +17,9 @@ export type LookupItem = {
 }
 
 export async function listLookups(group: string, locale: Locale): Promise<LookupItem[]> {
+  const cached = readCachedLookupGroup(group, locale)
+  if (cached) return cached
+
   const db = getDb()
   const rows = await db
     .select({
@@ -35,6 +43,13 @@ export async function listLookups(group: string, locale: Locale): Promise<Lookup
 }
 
 export async function getLookupLabel(group: string, id: string, locale: Locale) {
+  const cached = readCachedLookupLabel(group, id, locale)
+  if (cached) return cached
+
+  await warmupLookupCache(locale)
+  const warmed = readCachedLookupLabel(group, id, locale)
+  if (warmed) return warmed
+
   const db = getDb()
   const row = await db
     .select({ label: lookupTranslations.label })
@@ -93,20 +108,19 @@ export type ContentTemplate = {
 export async function listContentTemplates(locale: Locale = "ar"): Promise<ContentTemplate[]> {
   const items = await listLookups("content_template", locale)
 
-  return Promise.all(
-    items.map(async (item) => {
-      const knowledgeTypeId = String(item.metadata?.knowledgeTypeId ?? "")
-      return {
-        id: item.id,
-        name: item.label,
-        description: item.description ?? "",
-        knowledgeTypeId,
-        knowledgeType: knowledgeTypeId
-          ? await getLookupLabel("knowledge_type", knowledgeTypeId, locale)
-          : "",
-      }
-    }),
-  )
+  return items.map((item) => {
+    const knowledgeTypeId = String(item.metadata?.knowledgeTypeId ?? "")
+    return {
+      id: item.id,
+      name: item.label,
+      description: item.description ?? "",
+      knowledgeTypeId,
+      knowledgeType: knowledgeTypeId
+        ? readCachedLookupLabel("knowledge_type", knowledgeTypeId, locale) ??
+          knowledgeTypeId
+        : "",
+    }
+  })
 }
 
 export type TransferSessionTypeOption = {

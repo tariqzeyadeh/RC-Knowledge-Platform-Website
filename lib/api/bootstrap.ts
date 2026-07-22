@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n"
+import { warmupLookupCache } from "@/lib/db/repositories/lookup-cache"
 import {
   getAnalyticsKpis,
   getContentHealth,
@@ -35,6 +36,8 @@ import {
 } from "@/lib/db/repositories/lookup.repository"
 
 export async function getPlatformBootstrap(locale: Locale) {
+  await warmupLookupCache(locale)
+
   const [
     categories,
     knowledgeTypes,

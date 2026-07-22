@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm"
+import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import {
   communities,
@@ -12,6 +12,7 @@ import {
   userNotifications,
 } from "@/lib/db/schema"
 import { getLookupLabel } from "@/lib/db/repositories/lookup.repository"
+import { readCachedLookupLabel } from "@/lib/db/repositories/lookup-cache"
 import { resolveCommunityDomainLabel } from "@/lib/db/repositories/catalog.repository"
 import type { Locale } from "@/i18n"
 import type {
@@ -23,34 +24,24 @@ import type {
   TransferSession,
 } from "@/types/domain"
 
-async function mapCommunity(
+async function resolveLabel(group: string, id: string, locale: Locale) {
+  return readCachedLookupLabel(group, id, locale) ?? (await getLookupLabel(group, id, locale))
+}
+
+function mapCommunityRow(
   row: typeof communities.$inferSelect,
   locale: Locale,
-): Promise<Community> {
-  const db = getDb()
-  const items = await db
-    .select()
-    .from(communityItems)
-    .where(and(eq(communityItems.communityId, row.id), eq(communityItems.locale, locale)))
-    .orderBy(asc(communityItems.sortOrder))
-
-  const linked = await db
-    .select()
-    .from(communityLinkedAssets)
-    .where(eq(communityLinkedAssets.communityId, row.id))
-
-  const posts = await db
-    .select()
-    .from(communityPosts)
-    .where(eq(communityPosts.communityId, row.id))
-    .orderBy(desc(communityPosts.date))
-
+  items: Array<typeof communityItems.$inferSelect>,
+  linked: Array<typeof communityLinkedAssets.$inferSelect>,
+  posts: Array<typeof communityPosts.$inferSelect>,
+  domainLabel: string,
+): Community {
   return {
     id: row.id,
     name: locale === "en" && row.nameEn ? row.nameEn : row.nameAr,
     members: row.members,
     posts: row.posts,
-    domain: await resolveCommunityDomainLabel(row.domainId, locale),
+    domain: domainLabel,
     owner: row.owner,
     desc: locale === "en" && row.descEn ? row.descEn : row.descAr,
     active: row.active,
@@ -71,10 +62,88 @@ async function mapCommunity(
   }
 }
 
+async function mapCommunity(
+  row: typeof communities.$inferSelect,
+  locale: Locale,
+): Promise<Community> {
+  const db = getDb()
+  const [items, linked, posts] = await Promise.all([
+    db
+      .select()
+      .from(communityItems)
+      .where(and(eq(communityItems.communityId, row.id), eq(communityItems.locale, locale)))
+      .orderBy(asc(communityItems.sortOrder)),
+    db.select().from(communityLinkedAssets).where(eq(communityLinkedAssets.communityId, row.id)),
+    db
+      .select()
+      .from(communityPosts)
+      .where(eq(communityPosts.communityId, row.id))
+      .orderBy(desc(communityPosts.date)),
+  ])
+
+  const domainLabel =
+    readCachedLookupLabel("domain", row.domainId, locale) ??
+    (await resolveCommunityDomainLabel(row.domainId, locale))
+
+  return mapCommunityRow(row, locale, items, linked, posts, domainLabel)
+}
+
 export async function listCommunities(locale: Locale = "ar"): Promise<Community[]> {
   const db = getDb()
   const rows = await db.select().from(communities).orderBy(desc(communities.createdAt))
-  return Promise.all(rows.map((row) => mapCommunity(row, locale)))
+  if (rows.length === 0) return []
+
+  const ids = rows.map((row) => row.id)
+  const [allItems, allLinked, allPosts] = await Promise.all([
+    db
+      .select()
+      .from(communityItems)
+      .where(and(inArray(communityItems.communityId, ids), eq(communityItems.locale, locale)))
+      .orderBy(asc(communityItems.sortOrder)),
+    db.select().from(communityLinkedAssets).where(inArray(communityLinkedAssets.communityId, ids)),
+    db
+      .select()
+      .from(communityPosts)
+      .where(inArray(communityPosts.communityId, ids))
+      .orderBy(desc(communityPosts.date)),
+  ])
+
+  const itemsByCommunity = new Map<string, Array<typeof communityItems.$inferSelect>>()
+  for (const item of allItems) {
+    const list = itemsByCommunity.get(item.communityId) ?? []
+    list.push(item)
+    itemsByCommunity.set(item.communityId, list)
+  }
+
+  const linkedByCommunity = new Map<string, Array<typeof communityLinkedAssets.$inferSelect>>()
+  for (const item of allLinked) {
+    const list = linkedByCommunity.get(item.communityId) ?? []
+    list.push(item)
+    linkedByCommunity.set(item.communityId, list)
+  }
+
+  const postsByCommunity = new Map<string, Array<typeof communityPosts.$inferSelect>>()
+  for (const post of allPosts) {
+    const list = postsByCommunity.get(post.communityId) ?? []
+    list.push(post)
+    postsByCommunity.set(post.communityId, list)
+  }
+
+  return rows.map((row) => {
+    const domainLabel =
+      readCachedLookupLabel("domain", row.domainId, locale) ??
+      readCachedLookupLabel("category", row.domainId, locale) ??
+      row.domainId
+
+    return mapCommunityRow(
+      row,
+      locale,
+      itemsByCommunity.get(row.id) ?? [],
+      linkedByCommunity.get(row.id) ?? [],
+      postsByCommunity.get(row.id) ?? [],
+      domainLabel,
+    )
+  })
 }
 
 export async function getCommunity(id: string, locale: Locale = "ar") {
@@ -175,8 +244,45 @@ async function mapTransferOutput(
     id: row.id,
     title: row.title,
     type: row.type,
-    status: (await getLookupLabel("transfer_output_status", row.statusId, locale)) as TransferOutput["status"],
+    status: (await resolveLabel("transfer_output_status", row.statusId, locale)) as TransferOutput["status"],
     assetId: row.assetId ?? undefined,
+  }
+}
+
+function mapTransferSessionRow(
+  row: typeof transferSessions.$inferSelect,
+  locale: Locale,
+  outputs: Array<typeof transferOutputs.$inferSelect>,
+  labels: {
+    status: string
+    domain: string
+    department: string
+    duration: string
+    sessionType: string
+    documentedOutputs: TransferOutput[]
+  },
+): TransferSession {
+  return {
+    id: row.id,
+    title: locale === "en" && row.titleEn ? row.titleEn : row.titleAr,
+    expert: row.expert,
+    date: row.date,
+    status: labels.status as TransferSession["status"],
+    outputs: row.outputsCount,
+    domain: labels.domain,
+    department: labels.department,
+    duration: labels.duration,
+    facilitator: row.facilitator,
+    sessionType: labels.sessionType,
+    attendees: row.attendees,
+    agenda: row.agenda,
+    keyQuestions: row.keyQuestions,
+    documentedOutputs: labels.documentedOutputs,
+    summary: locale === "en" && row.summaryEn ? row.summaryEn : row.summaryAr,
+    nextSteps:
+      locale === "en" && row.nextStepsEn
+        ? row.nextStepsEn
+        : row.nextStepsAr ?? undefined,
   }
 }
 
@@ -190,34 +296,47 @@ async function mapTransferSession(
     .from(transferOutputs)
     .where(eq(transferOutputs.sessionId, row.id))
 
-  return {
-    id: row.id,
-    title: locale === "en" && row.titleEn ? row.titleEn : row.titleAr,
-    expert: row.expert,
-    date: row.date,
-    status: (await getLookupLabel("transfer_session_status", row.statusId, locale)) as TransferSession["status"],
-    outputs: row.outputsCount,
-    domain: await getLookupLabel("domain", row.domainId, locale),
-    department: await getLookupLabel("department", row.departmentId, locale),
-    duration: await getLookupLabel("transfer_duration", row.durationId, locale),
-    facilitator: row.facilitator,
-    sessionType: await getLookupLabel("transfer_session_type", row.sessionTypeId, locale),
-    attendees: row.attendees,
-    agenda: row.agenda,
-    keyQuestions: row.keyQuestions,
+  return mapTransferSessionRow(row, locale, outputs, {
+    status: await resolveLabel("transfer_session_status", row.statusId, locale),
+    domain: await resolveLabel("domain", row.domainId, locale),
+    department: await resolveLabel("department", row.departmentId, locale),
+    duration: await resolveLabel("transfer_duration", row.durationId, locale),
+    sessionType: await resolveLabel("transfer_session_type", row.sessionTypeId, locale),
     documentedOutputs: await Promise.all(outputs.map((output) => mapTransferOutput(output, locale))),
-    summary: locale === "en" && row.summaryEn ? row.summaryEn : row.summaryAr,
-    nextSteps:
-      locale === "en" && row.nextStepsEn
-        ? row.nextStepsEn
-        : row.nextStepsAr ?? undefined,
-  }
+  })
 }
 
 export async function listTransferSessions(locale: Locale = "ar") {
   const db = getDb()
   const rows = await db.select().from(transferSessions).orderBy(desc(transferSessions.date))
-  return Promise.all(rows.map((row) => mapTransferSession(row, locale)))
+  if (rows.length === 0) return []
+
+  const sessionIds = rows.map((row) => row.id)
+  const allOutputs = await db
+    .select()
+    .from(transferOutputs)
+    .where(inArray(transferOutputs.sessionId, sessionIds))
+
+  const outputsBySession = new Map<string, Array<typeof transferOutputs.$inferSelect>>()
+  for (const output of allOutputs) {
+    const list = outputsBySession.get(output.sessionId) ?? []
+    list.push(output)
+    outputsBySession.set(output.sessionId, list)
+  }
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const outputs = outputsBySession.get(row.id) ?? []
+      return mapTransferSessionRow(row, locale, outputs, {
+        status: await resolveLabel("transfer_session_status", row.statusId, locale),
+        domain: await resolveLabel("domain", row.domainId, locale),
+        department: await resolveLabel("department", row.departmentId, locale),
+        duration: await resolveLabel("transfer_duration", row.durationId, locale),
+        sessionType: await resolveLabel("transfer_session_type", row.sessionTypeId, locale),
+        documentedOutputs: await Promise.all(outputs.map((output) => mapTransferOutput(output, locale))),
+      })
+    }),
+  )
 }
 
 export async function getTransferSession(id: string, locale: Locale = "ar") {
@@ -265,14 +384,14 @@ async function mapReviewItem(row: typeof reviewItems.$inferSelect, locale: Local
     id: row.id,
     title: row.title,
     type: row.knowledgeTypeId
-      ? await getLookupLabel("knowledge_type", row.knowledgeTypeId, locale)
+      ? await resolveLabel("knowledge_type", row.knowledgeTypeId, locale)
       : "—",
     submittedBy: row.submittedBy,
-    department: await getLookupLabel("department", row.departmentId, locale),
+    department: await resolveLabel("department", row.departmentId, locale),
     submittedAt: row.submittedAt,
-    stage: (await getLookupLabel("review_stage", row.stageId, locale)) as ReviewItem["stage"],
+    stage: (await resolveLabel("review_stage", row.stageId, locale)) as ReviewItem["stage"],
     sla: row.sla,
-    priority: (await getLookupLabel("review_priority", row.priorityId, locale)) as ReviewItem["priority"],
+    priority: (await resolveLabel("review_priority", row.priorityId, locale)) as ReviewItem["priority"],
     assetId: row.assetId ?? undefined,
   }
 }
@@ -299,9 +418,9 @@ async function mapNeed(row: typeof knowledgeNeeds.$inferSelect, locale: Locale):
   return {
     id: row.id,
     title: locale === "en" && row.titleEn ? row.titleEn : row.titleAr,
-    unit: await getLookupLabel("need_unit", row.unitId, locale),
-    priority: (await getLookupLabel("need_priority", row.priorityId, locale)) as KnowledgeNeed["priority"],
-    status: (await getLookupLabel("need_status", row.statusId, locale)) as KnowledgeNeed["status"],
+    unit: await resolveLabel("need_unit", row.unitId, locale),
+    priority: (await resolveLabel("need_priority", row.priorityId, locale)) as KnowledgeNeed["priority"],
+    status: (await resolveLabel("need_status", row.statusId, locale)) as KnowledgeNeed["status"],
     votes: row.votes,
     assignedTo: row.assignedTo,
     requestedBy: row.requestedBy,
